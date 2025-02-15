@@ -44,33 +44,33 @@ export default function HomePage() {
           </div>
           <div className="grid gap-6">
             <Link
-              href="/dashboard/student"
+              href="/login"
               className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full")}
             >
               Student
             </Link>
             <Link
-              href="/dashboard/lecturer"
+              href="/login"
               className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full")}
             >
               Lecturer
             </Link>
-            <Link href="/dashboard/hod" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full")}>
+            <Link href="login" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full")}>
               Head of Department
             </Link>
             <Link
-              href="/dashboard/dp-academics"
+              href="/login"
               className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full")}
             >
               DP Academics
             </Link>
-            <Link href="/dashboard/config" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full")}>
+            <Link href="/login" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full")}>
               Config User
             </Link>
           </div>
           <p className="px-8 text-center text-sm text-muted-foreground">
             By clicking continue, you agree to our{" "}
-            <Link href="/terms" className="underline underline-offset-4 hover:text-primary">
+            <Link href="/login" className="underline underline-offset-4 hover:text-primary">
               Terms of Service
             </Link>{" "}
             and{" "}

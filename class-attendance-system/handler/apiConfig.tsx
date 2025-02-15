@@ -1,4 +1,4 @@
-// const BASE_URL = 'https://tovusacco2.pythonanywhere.com';
+// const BASE_URL = 'https://attendancetrackingsystem.pythonanywhere.com/';
 const BASE_URL = 'http://127.0.0.1:8000';
 
 export { BASE_URL };
