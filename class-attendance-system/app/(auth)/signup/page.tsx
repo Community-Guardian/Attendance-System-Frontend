@@ -4,22 +4,22 @@ import Link from "next/link"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
-import { UserAuthForm } from "@/components/user-auth-form"
+import { UserSignUpForm } from "@/components/user-signup-form"
 
 export const metadata: Metadata = {
-  title: "Login",
-  description: "Login to your account",
+  title: "Sign Up",
+  description: "Create a new account",
 }
 
-export default function LoginPage() {
+export default function SignUpPage() {
   return (
     <>
       <div className="container relative hidden h-[800px] flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
         <Link
-          href="/signup"
+          href="/login"
           className={cn(buttonVariants({ variant: "ghost" }), "absolute right-4 top-4 md:right-8 md:top-8")}
         >
-          Sign Up
+          Login
         </Link>
         <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
           <div className="absolute inset-0 bg-blue-900" />
@@ -30,19 +30,19 @@ export default function LoginPage() {
           <div className="relative z-20 mt-auto">
             <blockquote className="space-y-2">
               <p className="text-lg">
-                "This attendance system has revolutionized how we track student presence in our classes."
+                "A seamless experience for students and faculty, making attendance tracking effortless."
               </p>
-              <footer className="text-sm">Prof. Jane Smith</footer>
+              <footer className="text-sm">Dr. John Doe</footer>
             </blockquote>
           </div>
         </div>
         <div className="lg:p-8">
           <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
             <div className="flex flex-col space-y-2 text-center">
-              <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
-              <p className="text-sm text-muted-foreground">Enter your credentials to sign in</p>
+              <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
+              <p className="text-sm text-muted-foreground">Enter your details to sign up</p>
             </div>
-            <UserAuthForm />
+            <UserSignUpForm />
             <p className="px-8 text-center text-sm text-muted-foreground">
               By clicking continue, you agree to our{" "}
               <Link href="/terms" className="underline underline-offset-4 hover:text-primary">
@@ -60,4 +60,3 @@ export default function LoginPage() {
     </>
   )
 }
-
