@@ -85,7 +85,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     }
   };
-
   // Handle registration
   const register = async (email: string, password1: string, password2: string, role: string) => {
     setLoading(true);
