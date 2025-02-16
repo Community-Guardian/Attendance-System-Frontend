@@ -5,7 +5,7 @@ import "@/styles/globals.css";
 import type React from "react";
 import { AuthProvider } from "@/context/AuthContext";
 import { UserProvider } from "@/context/userContext";
-
+import { ToastProvider } from "@/components/ui/toast"
 export const metadata = {
   title: "Class Attendance System",
   description: "Login to the Class Attendance System.",
@@ -30,8 +30,10 @@ export default function RootLayout({
         >
           <AuthProvider>
             <UserProvider>
-              {children}
-              <Toaster />
+              <ToastProvider>
+                {children}
+                <Toaster />
+              </ToastProvider>
             </UserProvider>
           </AuthProvider>
         </ThemeProvider>
