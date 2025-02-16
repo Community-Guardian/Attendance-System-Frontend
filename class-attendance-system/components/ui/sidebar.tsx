@@ -153,14 +153,14 @@ export function Sidebar({ className, role }: SidebarProps) {
                     {route.title}
                   </Link>
                 ))}
-                <Button
-                  variant="destructive"
-                  className="mt-4 flex w-full items-center gap-2 px-3 py-2 text-sm font-medium"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </Button>
+              <Button
+  variant="destructive"
+  className="mt-4 flex w-full items-center gap-2 px-3 py-2 text-sm font-medium bg-blue-500 hover:bg-blue-700 text-white" // Added background and hover colors
+  onClick={handleLogout}
+>
+  <LogOut className="h-4 w-4" />
+  Logout
+</Button>
               </div>
             </div>
           </div>
