@@ -6,16 +6,17 @@ import { AttendanceSign } from "@/components/attendance-sign"
 import { WeeklyTimetable } from "@/components/weekly-timetable"
 import { AttendanceSummary } from "@/components/attendance-summary"
 import { Notifications } from "@/components/notifications"
-
+import { useUser } from "@/context/userContext"
 export const metadata: Metadata = {
   title: "Student Dashboard",
   description: "Student dashboard for the Class Attendance System.",
 }
 
 export default function StudentDashboardPage() {
+  // const { user } = useUser();
   return (
     <div className="space-y-6">
-      <h2 className="text-3xl font-bold tracking-tight">Welcome, [Student Name]</h2>
+      {/* <h2 className="text-3xl font-bold tracking-tight">Welcome, {user?.username} </h2> */}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
