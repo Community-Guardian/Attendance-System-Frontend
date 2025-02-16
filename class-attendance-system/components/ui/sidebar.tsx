@@ -25,11 +25,11 @@ import {
   LogOut,
 } from "lucide-react"
 
-interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
+interface SidebarProps {
   role: "student" | "lecturer" | "hod" | "dp_academics" | "config"
 }
 
-export function Sidebar({ className, role }: SidebarProps) {
+export function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { logout } = useAuth()
@@ -83,13 +83,12 @@ export function Sidebar({ className, role }: SidebarProps) {
     ],
   }
 
-  const currentRoutes = routes[role] || routes.student // Fallback to student routes if role is undefined
+  const currentRoutes = routes[role] || routes.student
 
-  // Handle logout action
   const handleLogout = async () => {
     try {
       await logout()
-      router.push("/login") // Redirect to login page after logout
+      router.push("/login")
     } catch (error) {
       console.error("Logout failed:", error)
     }
@@ -97,71 +96,74 @@ export function Sidebar({ className, role }: SidebarProps) {
 
   return (
     <>
+      {/* Mobile Sidebar */}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild>
-          <Button
-            variant="ghost"
-            className="px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 lg:hidden"
-          >
+          <Button variant="ghost" className="lg:hidden">
             <Menu className="h-6 w-6" />
-            <span className="sr-only">Toggle Menu</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-[240px] sm:w-[300px]">
-          <nav className="flex flex-col space-y-2">
+        <SheetContent side="left" className="w-64 bg-white dark:bg-gray-900">
+          <nav className="flex flex-col gap-2">
             {currentRoutes.map((route) => (
               <Link
                 key={route.href}
                 href={route.href}
                 className={cn(
-                  "flex items-center rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent",
-                  pathname === route.href ? "bg-accent" : "transparent",
+                  "flex items-center gap-3 px-4 py-2 rounded-lg transition duration-300",
+                  pathname === route.href
+                    ? "bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-md"
+                    : "text-gray-700 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-800"
                 )}
                 onClick={() => setIsOpen(false)}
               >
-                <route.icon className="mr-2 h-4 w-4" />
+                <route.icon className="h-5 w-5" />
                 {route.title}
               </Link>
             ))}
             <Button
               variant="destructive"
-              className="mt-4 flex items-center gap-2 px-3 py-2 text-sm font-medium"
+              className="mt-4 flex items-center gap-2 w-full text-sm font-medium bg-red-500 hover:bg-red-600 text-white"
               onClick={handleLogout}
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-5 w-5" />
               Logout
             </Button>
           </nav>
         </SheetContent>
       </Sheet>
-      <nav className={cn("hidden lg:flex lg:flex-col lg:w-64 lg:inset-y-0 lg:z-50", className)}>
-        <ScrollArea className="flex-grow">
-          <div className="space-y-4 py-4">
-            <div className="px-3 py-2">
-              <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">Menu</h2>
-              <div className="space-y-1">
-                {currentRoutes.map((route) => (
-                  <Link
-                    key={route.href}
-                    href={route.href}
-                    className={cn(
-                      "flex items-center rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent",
-                      pathname === route.href ? "bg-accent" : "transparent",
-                    )}
-                  >
-                    <route.icon className="mr-2 h-4 w-4" />
-                    {route.title}
-                  </Link>
-                ))}
+
+      {/* Desktop Sidebar */}
+      <nav className="hidden lg:flex flex-col h-screen w-64 bg-white dark:bg-gray-900 shadow-md">
+        <ScrollArea className="flex-grow p-4">
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold tracking-tight text-gray-800 dark:text-white">
+              Menu
+            </h2>
+            <div className="space-y-1">
+              {currentRoutes.map((route) => (
+                <Link
+                  key={route.href}
+                  href={route.href}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-2 rounded-lg transition duration-300",
+                    pathname === route.href
+                      ? "bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-md"
+                      : "text-gray-700 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-800"
+                  )}
+                >
+                  <route.icon className="h-5 w-5" />
+                  {route.title}
+                </Link>
+              ))}
               <Button
-  variant="destructive"
-  className="mt-4 flex w-full items-center gap-2 px-3 py-2 text-sm font-medium bg-blue-500 hover:bg-blue-700 text-white" // Added background and hover colors
-  onClick={handleLogout}
->
-  <LogOut className="h-4 w-4" />
-  Logout
-</Button>
-              </div>
+                variant="destructive"
+                className="mt-4 flex items-center gap-2 w-full text-sm font-medium bg-red-500 hover:bg-red-600 text-white"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-5 w-5" />
+                Logout
+              </Button>
             </div>
           </div>
         </ScrollArea>

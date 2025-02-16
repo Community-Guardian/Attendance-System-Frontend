@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { AttendanceList } from "@/components/attendance-list"
+import { AttendanceList } from "../components/AttendanceList"
 import { AttendanceSign } from "@/components/attendance-sign"
 
 export const metadata: Metadata = {
@@ -18,4 +18,3 @@ export default function StudentAttendancePage() {
     </div>
   )
 }
-

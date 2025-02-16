@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+"use client"
 import { Activity, Calendar, CheckCircle, User } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -7,16 +7,16 @@ import { WeeklyTimetable } from "@/components/weekly-timetable"
 import { AttendanceSummary } from "@/components/attendance-summary"
 import { Notifications } from "@/components/notifications"
 import { useUser } from "@/context/userContext"
-export const metadata: Metadata = {
-  title: "Student Dashboard",
-  description: "Student dashboard for the Class Attendance System.",
-}
-
+import FullPageLoader from "@/components/custom/FullPageLoader"
 export default function StudentDashboardPage() {
-  // const { user } = useUser();
+  const { user,loading } = useUser();
+
+  if (loading) {
+    return <FullPageLoader message="Fetching your dashboard data..." />;
+  }
   return (
     <div className="space-y-6">
-      {/* <h2 className="text-3xl font-bold tracking-tight">Welcome, {user?.username} </h2> */}
+      <h2 className="text-3xl font-bold tracking-tight">Welcome, {user?.username} </h2>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

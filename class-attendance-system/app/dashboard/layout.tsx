@@ -13,8 +13,8 @@ import { CoursesProvider } from "@/context/CoursesContext"
 import { GeolocationProvider } from "@/context/GeoLocationContext"
 import { ReportsProvider } from "@/context/ReportContext"
 import { TimetableProvider } from "@/context/TimetableContext"
-import { UserProvider } from "@/context/userContext"
-
+import {  useUser } from "@/context/userContext"
+import FullPageLoader from "@/components/custom/FullPageLoader"
 export default function DashboardLayout({
   children,
   params,
@@ -38,31 +38,33 @@ export default function DashboardLayout({
       console.error("Toast error:", error)
     }
   }, [])
-  
-  return (
-    <UserProvider>
-      <AttendanceProvider>
-        <BorrowAccountsProvider>
-            <ConfigProvider>
-              <CoursesProvider>
-                <GeolocationProvider>
-                  <ReportsProvider>
-                    <TimetableProvider>
-                    <div className="flex flex-col h-screen lg:flex-row">
-                      <Sidebar role={params.role} />
-                      <main className="flex-1 overflow-y-auto p-4 lg:p-8">
-                      {children}
-                      </main>
-                    </div>
-                    </TimetableProvider>
-                  </ReportsProvider>
-                </GeolocationProvider>
-              </CoursesProvider>
-            </ConfigProvider>
-        </BorrowAccountsProvider>
-      </AttendanceProvider>         
-    </UserProvider>
+  const {loading} = useUser()
 
+
+  if (loading) {
+    return <FullPageLoader message="Syncing Your details...." />;
+  }
+  return (
+  <div className="flex flex-col h-screen lg:flex-row">
+    <Sidebar role={params.role} />
+    <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+        <AttendanceProvider>
+          <BorrowAccountsProvider>
+              <ConfigProvider>
+                <CoursesProvider>
+                  <GeolocationProvider>
+                    <ReportsProvider>
+                      <TimetableProvider>
+                          {children}
+                      </TimetableProvider>
+                    </ReportsProvider>
+                  </GeolocationProvider>
+                </CoursesProvider>
+              </ConfigProvider>
+          </BorrowAccountsProvider>
+        </AttendanceProvider>         
+    </main>
+  </div>
   )
 }
 
