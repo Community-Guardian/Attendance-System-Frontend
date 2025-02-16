@@ -2,11 +2,12 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { useAuth } from "@/context/AuthContext"
 import {
   Home,
   Users,
@@ -21,6 +22,7 @@ import {
   Activity,
   User,
   BarChart,
+  LogOut,
 } from "lucide-react"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -29,6 +31,8 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function Sidebar({ className, role }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const { logout } = useAuth()
   const [isOpen, setIsOpen] = React.useState(false)
 
   const routes = {
@@ -81,6 +85,16 @@ export function Sidebar({ className, role }: SidebarProps) {
 
   const currentRoutes = routes[role] || routes.student // Fallback to student routes if role is undefined
 
+  // Handle logout action
+  const handleLogout = async () => {
+    try {
+      await logout()
+      router.push("/login") // Redirect to login page after logout
+    } catch (error) {
+      console.error("Logout failed:", error)
+    }
+  }
+
   return (
     <>
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -109,6 +123,14 @@ export function Sidebar({ className, role }: SidebarProps) {
                 {route.title}
               </Link>
             ))}
+            <Button
+              variant="destructive"
+              className="mt-4 flex items-center gap-2 px-3 py-2 text-sm font-medium"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
           </nav>
         </SheetContent>
       </Sheet>
@@ -131,6 +153,14 @@ export function Sidebar({ className, role }: SidebarProps) {
                     {route.title}
                   </Link>
                 ))}
+                <Button
+                  variant="destructive"
+                  className="mt-4 flex w-full items-center gap-2 px-3 py-2 text-sm font-medium"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </Button>
               </div>
             </div>
           </div>
@@ -139,4 +169,3 @@ export function Sidebar({ className, role }: SidebarProps) {
     </>
   )
 }
-
