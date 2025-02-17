@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { useAuth } from "@/context/AuthContext"
+import { useUser } from "@/context/userContext"
 import {
   Home,
   Users,
@@ -25,15 +25,27 @@ import {
   LogOut,
 } from "lucide-react"
 
-interface SidebarProps {
-  role: "student" | "lecturer" | "hod" | "dp_academics" | "config"
-}
-
-export function Sidebar({ role }: SidebarProps) {
+export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const { logout } = useAuth()
+  const { user, logout, loading } = useUser()
   const [isOpen, setIsOpen] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login") // Redirect if no user
+    }
+  }, [user, loading, router])
+
+  if (loading) {
+    return null // Don't show the sidebar while loading
+  }
+
+  if (!user) {
+    return null // Prevent rendering if no user
+  }
+
+  const role = user.role as keyof typeof routes
 
   const routes = {
     student: [
@@ -71,7 +83,7 @@ export function Sidebar({ role }: SidebarProps) {
       { href: "/dashboard/dp-academics/reports", icon: FileText, title: "Reports" },
       { href: "/dashboard/dp-academics/settings", icon: Settings, title: "Settings" },
     ],
-    config: [
+    config_user: [
       { href: "/dashboard/config", icon: Home, title: "Dashboard" },
       { href: "/dashboard/config/users", icon: UserCog, title: "User Management" },
       { href: "/dashboard/config/courses", icon: BookOpen, title: "Courses" },
@@ -80,6 +92,11 @@ export function Sidebar({ role }: SidebarProps) {
       { href: "/dashboard/config/geolocation", icon: Map, title: "Geolocation" },
       { href: "/dashboard/config/system", icon: Settings, title: "System Config" },
       { href: "/dashboard/config/logs", icon: BarChart, title: "System Logs" },
+    ],
+    admin: [
+      { href: "/dashboard/admin", icon: Home, title: "Admin Dashboard" },
+      { href: "/dashboard/admin/users", icon: Users, title: "Manage Users" },
+      { href: "/dashboard/admin/settings", icon: Settings, title: "Settings" },
     ],
   }
 
@@ -156,11 +173,7 @@ export function Sidebar({ role }: SidebarProps) {
                   {route.title}
                 </Link>
               ))}
-              <Button
-                variant="destructive"
-                className="mt-4 flex items-center gap-2 w-full text-sm font-medium bg-red-500 hover:bg-red-600 text-white"
-                onClick={handleLogout}
-              >
+              <Button variant="destructive" onClick={handleLogout}>
                 <LogOut className="h-5 w-5" />
                 Logout
               </Button>

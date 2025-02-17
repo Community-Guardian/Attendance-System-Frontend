@@ -1,21 +1,22 @@
-import type { Metadata } from "next"
-import { Activity, Book, Calendar, FileText } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { StartAttendanceSession } from "@/components/start-attendance-session"
-import { WeeklyTimetable } from "@/components/weekly-timetable"
-import { CourseOverview } from "@/components/course-overview"
-import { Notifications } from "@/components/notifications"
+"use client";
 
-export const metadata: Metadata = {
-  title: "Lecturer Dashboard",
-  description: "Lecturer dashboard for the Class Attendance System.",
-}
+import { Activity, Book, Calendar, FileText } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { StartAttendanceSession } from "@/components/start-attendance-session";
+import { WeeklyTimetable } from "@/components/weekly-timetable";
+import { CourseOverview } from "@/components/course-overview";
+import { Notifications } from "@/components/notifications";
+import { useUser } from "@/context/userContext";
 
 export default function LecturerDashboardPage() {
+  const { user, loading } = useUser();
+
   return (
     <div className="space-y-6">
-      <h2 className="text-3xl font-bold tracking-tight">Welcome, [Lecturer Name]</h2>
+      <h2 className="text-3xl font-bold tracking-tight">
+        {loading ? "Loading..." : `Welcome, ${user?.username || "Lecturer"}`}
+      </h2>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -23,10 +24,10 @@ export default function LecturerDashboardPage() {
             <CardTitle className="text-sm font-medium">Active Sessions</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          {/* <CardContent>
             <div className="text-2xl font-bold">1</div>
             <StartAttendanceSession />
-          </CardContent>
+          </CardContent> */}
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -54,9 +55,7 @@ export default function LecturerDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">15</div>
-            <Button size="sm" className="mt-2">
-              View Reports
-            </Button>
+            <Button size="sm" className="mt-2">View Reports</Button>
           </CardContent>
         </Card>
       </div>
@@ -89,6 +88,5 @@ export default function LecturerDashboardPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
-

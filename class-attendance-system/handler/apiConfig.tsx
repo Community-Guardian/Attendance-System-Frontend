@@ -39,6 +39,7 @@ export const COURSE_URL = `${BASE_URL}/courses/`;
 
 // Geolocation URLs
 export const GEOLOCATION_ZONE_URL = `${BASE_URL}/geolocation/geolocation_zones/`;
+export const GEOLOCATION_ZONE_URL = `${BASE_URL}/geolocation/geolocation_zones/`;
 
 // Reports URLs
 export const ATTENDANCE_REPORT_URL = `${BASE_URL}/reports/attendance-reports/`;
@@ -46,6 +47,7 @@ export const STUDENT_ATTENDANCE_HISTORY_URL = `${BASE_URL}/reports/student-histo
 export const TIMETABLE_ADHERENCE_URL = `${BASE_URL}/reports/timetable-adherence/`;
 
 // Timetables URLs
+export const TIMETABLE_URL = `${BASE_URL}/timetables/`;
 export const TIMETABLE_URL = `${BASE_URL}/timetables/`;
 export const TIMETABLE_PDF_URL = `${BASE_URL}/timetables/timetable-pdfs/`;
 
