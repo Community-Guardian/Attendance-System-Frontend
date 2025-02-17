@@ -63,10 +63,8 @@ export default function LecturerReportsPage() {
                     <td className="py-3 px-4">{report.course.name}</td>
                     <td className="py-3 px-4">{report.total_students}</td>
                     <td className="py-3 px-4">
-                      {Array.isArray(report.students_present) && report.students_present.length > 0 ? (
-                        report.students_present.map((student) => (
-                          <div key={student.id} className="text-xs text-gray-900 dark:text-gray-100">{student.name}</div>
-                        ))
+                      {report.students_present > 0 ? (
+                          <div className="text-xs text-gray-900 dark:text-gray-100">{report.students_present}</div>
                       ) : (
                         <div className="text-xs text-gray-600 dark:text-gray-400">No students present</div>
                       )}

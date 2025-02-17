@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from "date-fns";
 import clsx from "clsx";
