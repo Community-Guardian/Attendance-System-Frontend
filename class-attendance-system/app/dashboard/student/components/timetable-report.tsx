@@ -11,6 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { TimetableAdherence } from "@/types/reports"
+import { formatDateTime } from "@/utils/date"
 
 export function TimetableReport() {
   const { timetableAdherence } = useReports()
@@ -28,31 +30,34 @@ export function TimetableReport() {
               <TableHead>Day</TableHead>
               <TableHead>Scheduled Time</TableHead>
               <TableHead>Actual Time</TableHead>
-              <TableHead>Adherence</TableHead>
+              <TableHead>Deviation</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {timetableAdherence.map((adherence) => (
-              <TableRow key={adherence.id}>
-                <TableCell>{adherence.session.course?.name}</TableCell>
-                <TableCell>{adherence.session.timetable?.day_of_week}</TableCell>
-                <TableCell>{adherence.session.timetable?.start_time}</TableCell>
-                <TableCell>{adherence.started_on_time}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      adherence.deviation_minutes >= 90
-                        ? "default"
-                        : adherence.deviation_minutes >= 75
-                        ? "secondary"
-                        : "destructive"
-                    }
-                  >
-                    {adherence.deviation_minutes}%
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            ))}
+            {timetableAdherence.map((adherence: TimetableAdherence) => {
+              const deviation = adherence.deviation_minutes
+              let badgeVariant: "default" | "secondary" | "destructive"
+
+              if (deviation < 5) {
+                badgeVariant = "default" // 🟢 On Time
+              } else if (deviation >= 5 && deviation <= 15) {
+                badgeVariant = "secondary" // 🟡 Slightly Late
+              } else {
+                badgeVariant = "destructive" // 🔴 Very Late
+              }
+
+              return (
+                <TableRow key={adherence.id}>
+                  <TableCell>{adherence.session.course?.name || "N/A"}</TableCell>
+                  <TableCell>{adherence.session.timetable?.day_of_week || "N/A"}</TableCell>
+                  <TableCell>{formatDateTime(adherence.session.timetable?.start_time as string)}</TableCell>
+                  <TableCell>{formatDateTime(adherence.session.start_time as string)}</TableCell>
+                  <TableCell>
+                    <Badge variant={badgeVariant}>{deviation} min</Badge>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
           </TableBody>
         </Table>
       </CardContent>

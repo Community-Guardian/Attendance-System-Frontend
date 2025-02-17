@@ -9,15 +9,18 @@ import { ReportList } from "./report-list"
 import { AttendanceHistory } from "./attendance-history"
 import { TimetableReport } from "./timetable-report"
 import { Download, FileSpreadsheet, Filter, PieChart, RefreshCcw, Share2 } from 'lucide-react'
-
+import { useUser } from "@/context/userContext"
 export function ReportsDashboard() {
   const {
     attendanceReports,
+    studentAttendanceHistory,
     fetchAttendanceReports,
     fetchStudentAttendanceHistory,
     fetchTimetableAdherence,
     loading,
   } = useReports()
+
+  const { user } = useUser()
 
   useEffect(() => {
     fetchAttendanceReports()
@@ -26,11 +29,8 @@ export function ReportsDashboard() {
   }, [])
 
   // Calculate statistics
-  const totalClasses = attendanceReports.length
-  const totalPresent = attendanceReports.reduce(
-    (sum, report) => sum + report.students_present.length,
-    0
-  )
+  const totalClasses = attendanceReports.filter((report) => report.course.students?.filter((student) => student?.id===user?.id).length).length
+  const totalPresent = studentAttendanceHistory.filter((history) => history.student.id===user?.id).length
   const totalStudents = attendanceReports.reduce(
     (sum, report) => sum + report.total_students,
     0
