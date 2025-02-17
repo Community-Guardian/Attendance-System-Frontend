@@ -6,8 +6,9 @@ import { AttendanceSession } from "@/types/attendance";
 import { Course } from "@/types/courses";
 import { User } from "@/types";
 import { GeolocationZone } from "@/types/geolocation";
+
 type Event = {
-  type: "session"| "timetable";
+  type: "session" | "timetable";
   time: Date;
   id: string;
   timetable: Partial<Timetable>;
@@ -27,94 +28,88 @@ interface ScheduleEvent extends Event {
   geolocation_zone: Partial<GeolocationZone>;
 }
 interface CalendarProps {
-  events: ScheduleEvent[]
-  holidays: { date: string; name: string }[]; // [{ date: "2025-02-20", name: "Public Holiday" }]
-  selectedDate?: Date; // Add selectedDate as an optional prop
-  onSelect?: (date: Date) => void; // Add onSelect function to handle date selection
+  events: ScheduleEvent[];
+  holidays: { date: string; name: string }[];
+  selectedDate?: Date;
+  onSelect?: (date: Date) => void;
 }
 
-export function Calendar({ events = [], holidays = [], selectedDate, onSelect }: CalendarProps) {
+export function Calendar({
+  events = [],
+  holidays = [],
+  selectedDate,
+  onSelect,
+}: CalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  // Get the first and last day of the month
   const firstDay = startOfMonth(currentMonth);
   const lastDay = endOfMonth(currentMonth);
-
-  // Generate all days in the month
   const daysInMonth = eachDayOfInterval({ start: firstDay, end: lastDay });
-
-  // Days of the week (Monday - Sunday)
   const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-  // Get the start day of the month (0 = Sunday, 6 = Saturday)
-  const startDayIndex = getDay(firstDay) === 0 ? 6 : getDay(firstDay) - 1; // Adjust for Monday start
-
-  // Memoize holidays lookup for better performance
-  const holidayMap = new Map(holidays.map(h => [h.date, h.name]));
+  const startDayIndex = getDay(firstDay) === 0 ? 6 : getDay(firstDay) - 1;
+  const holidayMap = new Map(holidays.map((h) => [h.date, h.name]));
 
   const handleDayClick = (date: Date) => {
     if (onSelect) {
-      onSelect(date); // Call the onSelect function passed in as a prop
+      onSelect(date);
     }
   };
 
   return (
-    <div className="space-y-4">
-      {/* Month Selector */}
+    <div className="space-y-4 bg-gray-50 p-4 rounded-lg shadow-lg">
+      {/* Month Navigation */}
       <div className="flex justify-between items-center">
         <button
-          className="p-2 bg-gray-200 rounded"
+          className="p-2 bg-blue-500 text-white rounded-full shadow-md hover:bg-blue-400 transition-all"
           onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))}
         >
-          &larr; Previous
+          &larr;
         </button>
-        <h2 className="text-lg font-semibold">{format(currentMonth, "MMMM yyyy")}</h2>
+        <h2 className="text-2xl font-semibold text-gray-800">{format(currentMonth, "MMMM yyyy")}</h2>
         <button
-          className="p-2 bg-gray-200 rounded"
+          className="p-2 bg-blue-500 text-white rounded-full shadow-md hover:bg-blue-400 transition-all"
           onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() + 1)))}
         >
-          Next &rarr;
+          &rarr;
         </button>
       </div>
 
       {/* Days of the week headers */}
-      <div className="grid grid-cols-7 gap-2 text-center font-bold">
+      <div className="grid grid-cols-7 gap-2 text-center font-semibold text-gray-700">
         {weekDays.map((day) => (
-          <div key={day}>{day}</div>
+          <div key={day} className="uppercase">{day}</div>
         ))}
       </div>
 
-      {/* Calendar grid */}
+      {/* Calendar Grid */}
       <div className="grid grid-cols-7 gap-2">
-        {/* Empty spaces before the first day */}
+        {/* Empty cells before the first day */}
         {Array.from({ length: startDayIndex }).map((_, index) => (
           <div key={`empty-${index}`} className="p-4"></div>
         ))}
 
-        {/* Render each day */}
+        {/* Render Days */}
         {daysInMonth.map((date) => {
           const dateStr = format(date, "yyyy-MM-dd");
-
-          // Default to empty array if the event is not found in the events object
-          const dayEvents = events.filter(event => format(event.time, "yyyy-MM-dd") === dateStr);
+          const dayEvents = events.filter((event) => format(event.time, "yyyy-MM-dd") === dateStr);
           const holiday = holidayMap.get(dateStr);
 
           return (
             <div
               key={dateStr}
               className={clsx(
-                "p-2 border rounded-md flex flex-col items-center text-sm relative",
-                holiday && "bg-red-100 border-red-400",
+                "p-4 border rounded-md text-sm relative transition-transform duration-300 transform hover:scale-105 hover:shadow-lg",
+                holiday && "bg-yellow-100 border-yellow-400",
                 dayEvents.length > 0 && "bg-blue-50 border-blue-400",
-                selectedDate?.toDateString() === date.toDateString() && "bg-blue-200" // Highlight selected day
+                selectedDate?.toDateString() === date.toDateString() && "bg-gradient-to-r from-blue-300 to-blue-500 text-white"
               )}
-              onClick={() => handleDayClick(date)} // Call the click handler
+              onClick={() => handleDayClick(date)}
             >
               <span className="font-semibold">{format(date, "d")}</span>
 
               {/* Holiday Label */}
               {holiday && (
-                <div className="absolute top-0 text-xs bg-red-500 text-white px-1 rounded-md">
+                <div className="absolute top-0 right-0 bg-red-500 text-white px-2 py-1 rounded-md text-xs">
                   {holiday}
                 </div>
               )}
@@ -123,8 +118,11 @@ export function Calendar({ events = [], holidays = [], selectedDate, onSelect }:
               {dayEvents.length > 0 && (
                 <div className="mt-2 w-full">
                   {dayEvents.map((event, index) => (
-                    <div key={index} className="text-xs bg-blue-200 rounded px-1 py-0.5 mt-1 text-center">
-                      {event.course.code} {/* or any other property that is a string or a React component */}
+                    <div
+                      key={index}
+                      className="text-xs bg-blue-200 text-blue-800 rounded-full px-2 py-0.5 mt-1 text-center"
+                    >
+                      {event.course.code}
                     </div>
                   ))}
                 </div>

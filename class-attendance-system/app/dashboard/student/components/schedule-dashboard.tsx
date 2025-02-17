@@ -154,14 +154,10 @@ export function ScheduleDashboard() {
             <CalendarIcon className="mr-2 h-4 w-4" />
             Today
           </Button>
-          <Button variant="outline" size="sm">
-            <Clock className="mr-2 h-4 w-4" />
-            Active Sessions
-          </Button>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-[1fr_300px]">
+      <div className="grid gap-6 md:grid-rows-2">
         {/* Schedule Section */}
         <Card className="order-2 md:order-1">
           <Tabs defaultValue="daily" className="w-full">
