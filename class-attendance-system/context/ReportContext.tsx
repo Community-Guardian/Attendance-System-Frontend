@@ -13,15 +13,15 @@ interface ReportsContextProps {
   fetchAttendanceReports: (filters?: Record<string, string | number | undefined>, ordering?: string) => void;
   fetchStudentAttendanceHistory: (filters?: Record<string, string | number | undefined>, ordering?: string) => void;
   fetchTimetableAdherence: (filters?: Record<string, string | number | undefined>, ordering?: string) => void;
-  createAttendanceReport: (newReport: Partial<AttendanceReport>) => void;
-  updateAttendanceReport: (id: string, updatedData: Partial<AttendanceReport>) => void;
-  deleteAttendanceReport: (id: string) => void;
-  createStudentAttendanceHistory: (newHistory: Partial<StudentAttendanceHistory>) => void;
-  updateStudentAttendanceHistory: (id: string, updatedData: Partial<StudentAttendanceHistory>) => void;
-  deleteStudentAttendanceHistory: (id: string) => void;
-  createTimetableAdherence: (newAdherence: Partial<TimetableAdherence>) => void;
-  updateTimetableAdherence: (id: string, updatedData: Partial<TimetableAdherence>) => void;
-  deleteTimetableAdherence: (id: string) => void;
+  // createAttendanceReport: (newReport: Partial<AttendanceReport>) => void;
+  // updateAttendanceReport: (id: string, updatedData: Partial<AttendanceReport>) => void;
+  // deleteAttendanceReport: (id: string) => void;
+  // createStudentAttendanceHistory: (newHistory: Partial<StudentAttendanceHistory>) => void;
+  // updateStudentAttendanceHistory: (id: string, updatedData: Partial<StudentAttendanceHistory>) => void;
+  // deleteStudentAttendanceHistory: (id: string) => void;
+  // createTimetableAdherence: (newAdherence: Partial<TimetableAdherence>) => void;
+  // updateTimetableAdherence: (id: string, updatedData: Partial<TimetableAdherence>) => void;
+  // deleteTimetableAdherence: (id: string) => void;
   currentPage: number;
   totalPages: number;
   nextPage: () => void;
@@ -93,15 +93,15 @@ export const ReportsProvider = ({ children }: { children: ReactNode }) => {
         fetchAttendanceReports: fetchReportsWithFilters,
         fetchStudentAttendanceHistory: fetchHistoryWithFilters,
         fetchTimetableAdherence: fetchAdherenceWithFilters,
-        createAttendanceReport,
-        updateAttendanceReport,
-        deleteAttendanceReport,
-        createStudentAttendanceHistory,
-        updateStudentAttendanceHistory,
-        deleteStudentAttendanceHistory,
-        createTimetableAdherence,
-        updateTimetableAdherence,
-        deleteTimetableAdherence,
+        // createAttendanceReport,
+        // updateAttendanceReport,
+        // deleteAttendanceReport,
+        // createStudentAttendanceHistory,
+        // updateStudentAttendanceHistory,
+        // deleteStudentAttendanceHistory,
+        // createTimetableAdherence,
+        // updateTimetableAdherence,
+        // deleteTimetableAdherence,
         currentPage,
         totalPages,
         nextPage,
