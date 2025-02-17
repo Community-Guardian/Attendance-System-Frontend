@@ -1,20 +1,20 @@
 import type { Metadata } from "next"
-import { AttendanceList } from "../components/AttendanceList"
-import { AttendanceSign } from "@/components/attendance-sign"
+import { Suspense } from "react"
+import { StudentDashboard } from "../components/student-dashboard"
+import { LoadingDashboard } from "../components/loading-dashboard"
 
 export const metadata: Metadata = {
-  title: "Student Attendance",
-  description: "View and sign attendance for your classes.",
+  title: "Student Attendance Dashboard",
+  description: "View and manage your class attendance",
 }
 
-export default function StudentAttendancePage() {
+export default function AttendancePage() {
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Attendance</h1>
-        <AttendanceSign />
-      </div>
-      <AttendanceList />
+    <div className="container mx-auto py-6 space-y-6">
+      <Suspense fallback={<LoadingDashboard />}>
+        <StudentDashboard />
+      </Suspense>
     </div>
   )
 }
+

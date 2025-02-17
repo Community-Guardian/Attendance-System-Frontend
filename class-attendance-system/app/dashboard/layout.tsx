@@ -46,7 +46,7 @@ export default function DashboardLayout({
   }
   return (
   <div className="flex flex-col h-screen lg:flex-row">
-    <Sidebar role={params.role} />
+    <Sidebar/>
     <main className="flex-1 overflow-y-auto p-4 lg:p-8">
         <AttendanceProvider>
           <BorrowAccountsProvider>
