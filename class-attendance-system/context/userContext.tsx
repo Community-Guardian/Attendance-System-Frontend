@@ -8,6 +8,7 @@ interface UserContextProps {
   loading: boolean;
   error: string | null;
   fetchUser: () => void;
+  fetchUserById: (id: string) => Promise<User | null>;
   updateUser: (id: string, updatedData: Partial<User>) => void;
   deleteUser: (id: string) => void;
   logout: () => void;
@@ -29,6 +30,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const fetchUser = () => {
     fetchData();
   };
+
+  const fetchUserById = async (id: string) => {
+    const user = await fetchById(id);
+    return user;
+  }
 
   const updateUser = async (id: string, updatedData: Partial<User>) => {
     try {
@@ -59,6 +65,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         loading,
         error,
         fetchUser,
+        fetchUserById,
         updateUser,
         deleteUser,
         logout,

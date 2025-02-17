@@ -10,7 +10,7 @@ export default function StudentCoursesPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">My Courses</h1>
-      <CourseList />
+      <CourseList role="student" />
     </div>
   )
 }

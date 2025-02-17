@@ -6,10 +6,10 @@ import { AttendanceSign } from "@/components/attendance-sign"
 import { WeeklyTimetable } from "@/components/weekly-timetable"
 import { AttendanceSummary } from "@/components/attendance-summary"
 import { Notifications } from "@/components/notifications"
-import { useUser } from "@/context/userContext"
+import { useAuth } from "@/context/AuthContext"
 import FullPageLoader from "@/components/custom/FullPageLoader"
 export default function StudentDashboardPage() {
-  const { user,loading } = useUser();
+  const { user,loading } = useAuth();
 
   if (loading) {
     return <FullPageLoader message="Fetching your dashboard data..." />;

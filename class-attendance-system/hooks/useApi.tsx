@@ -59,7 +59,7 @@ function useApi<T>(url: string) {
     setError(null);
     try {
       const response = await api.get<T>(`${url}${id}/`);
-      setData([response.data]); // Store the single item in an array
+      return response.data;
     } catch (err) {
       handleApiError(err as AxiosError<ApiErrorResponse>);
       setError('Failed to fetch item');

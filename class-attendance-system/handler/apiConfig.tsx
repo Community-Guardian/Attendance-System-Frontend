@@ -19,8 +19,8 @@ export const USER_URL = `${BASE_URL}/api/users/`;
 export const REFRESH_TOKEN_URL = `${BASE_URL}/token/refresh/`;
 
 // Attendance URLs
-export const ATTENDANCE_SESSION_URL = `${BASE_URL}/attendance/sessions/`;
-export const ATTENDANCE_RECORD_URL = `${BASE_URL}/attendance/records/`;
+export const ATTENDANCE_SESSION_URL = `${BASE_URL}/attendance/attendance_sessions/`;
+export const ATTENDANCE_RECORD_URL = `${BASE_URL}/attendance/attendance_records/`;
 
 // Borrow Accounts URLs
 export const BORROW_ACCOUNT_URL = `${BASE_URL}/borrow/borrow-accounts/`;
@@ -28,17 +28,17 @@ export const FACIAL_RECOGNITION_DATA_URL = `${BASE_URL}/borrow/facial-recognitio
 export const BORROWED_ATTENDANCE_RECORD_URL = `${BASE_URL}/borrow/borrowed-attendance/`;
 
 // Config URLs
-export const SYSTEM_SETTINGS_URL = `${BASE_URL}/config/system-settings/`;
-export const CAT_ATTENDANCE_WEEK_URL = `${BASE_URL}/config/cat-attendance-week/`;
-export const TIMETABLE_RULE_URL = `${BASE_URL}/config/timetable-rule/`;
-export const AUDIT_LOG_URL = `${BASE_URL}/config/audit-log/`;
+export const SYSTEM_SETTINGS_URL = `${BASE_URL}/system-settings//`;
+export const CAT_ATTENDANCE_WEEK_URL = `${BASE_URL}/cat-weeks/`;
+export const TIMETABLE_RULE_URL = `${BASE_URL}/timetable-rules/`;
+export const AUDIT_LOG_URL = `${BASE_URL}/audit-logs/`;
 
 // Courses URLs
-export const DEPARTMENT_URL = `${BASE_URL}/courses/departments/`;
-export const COURSE_URL = `${BASE_URL}/courses/courses/`;
+export const DEPARTMENT_URL = `${BASE_URL}/departments/`;
+export const COURSE_URL = `${BASE_URL}/courses/`;
 
 // Geolocation URLs
-export const GEOLOCATION_ZONE_URL = `${BASE_URL}/geolocation/zones/`;
+export const GEOLOCATION_ZONE_URL = `${BASE_URL}/geolocation/geolocation_zones/`;
 
 // Reports URLs
 export const ATTENDANCE_REPORT_URL = `${BASE_URL}/reports/attendance-reports/`;
@@ -46,7 +46,7 @@ export const STUDENT_ATTENDANCE_HISTORY_URL = `${BASE_URL}/reports/student-histo
 export const TIMETABLE_ADHERENCE_URL = `${BASE_URL}/reports/timetable-adherence/`;
 
 // Timetables URLs
-export const TIMETABLE_URL = `${BASE_URL}/timetables/timetables/`;
+export const TIMETABLE_URL = `${BASE_URL}/timetables/`;
 export const TIMETABLE_PDF_URL = `${BASE_URL}/timetables/timetable-pdfs/`;
 
 // UserManager URLs

@@ -1,28 +1,36 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "@/components/ui/use-toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
-const initialCourseData = [
-  { id: 1, code: "MATH101", name: "Mathematics 101", lecturer: "Dr. John Doe" },
-  { id: 2, code: "PHYS202", name: "Physics 202", lecturer: "Prof. Jane Smith" },
-  { id: 3, code: "CHEM301", name: "Chemistry 301", lecturer: "Dr. Alice Johnson" },
-  { id: 4, code: "BIO401", name: "Biology 401", lecturer: "Prof. Bob Williams" },
-  { id: 5, code: "CS501", name: "Computer Science 501", lecturer: "Dr. Eve Brown" },
-]
-
+import { useCourses } from "@/context/CoursesContext"
+import { Course } from "@/types/courses"
+import { User } from "@/types"
 export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "dp_academics" | "config" }) {
-  const [courseData, setCourseData] = useState(initialCourseData)
-  const [newCourse, setNewCourse] = useState({ code: "", name: "", lecturer: "" })
+  const { courses, fetchCourses, createCourse, updateCourse } = useCourses()
+  const [newCourse, setNewCourse] = useState<Partial<Course>>({
+    code: "",
+    name: "",
+    lecturers: [],
+    department: {
+      id: "",
+      name: "",
+      hod: null
+    },
+    students: [],
+  })
 
-  const handleAddCourse = () => {
+  useEffect(() => {
+    fetchCourses() // Fetch courses when the component mounts
+  }, [])
+
+  const handleAddCourse = async () => {
     if (role !== "config") return
-    if (!newCourse.code || !newCourse.name || !newCourse.lecturer) {
+    if (!newCourse.code || !newCourse.name || !newCourse.department) {
       toast({
         title: "Missing Information",
         description: "Please fill in all fields for the new course.",
@@ -30,21 +38,51 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
       })
       return
     }
-    setCourseData([...courseData, { id: courseData.length + 1, ...newCourse }])
-    setNewCourse({ code: "", name: "", lecturer: "" })
-    toast({
-      title: "Course Added",
-      description: "The new course has been added successfully.",
-    })
+    
+    try {
+      await createCourse(newCourse)
+      setNewCourse({ code: "", name: "", lecturers: [], department: {
+        id: "",
+        name: "",
+        hod: null
+      }, students: [] }) // Reset form
+      toast({
+        title: "Course Added",
+        description: "The new course has been added successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add the course. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleReassignLecturer = (courseId: number, newLecturer: string) => {
+  const handleReassignLecturer = async (courseId: string, newLecturer: string) => {
     if (role !== "hod") return
-    setCourseData(courseData.map((course) => (course.id === courseId ? { ...course, lecturer: newLecturer } : course)))
-    toast({
-      title: "Lecturer Reassigned",
-      description: `The lecturer for course ${courseId} has been updated.`,
-    })
+
+    try {
+      const courseToUpdate = courses.find(course => course.id === courseId)
+      if (!courseToUpdate) return
+
+      const newLecturerUser: Partial<User> = { id: newLecturer, username: newLecturer }; // Create a new User object for the new lecturer
+      const updatedLecturers = [...courseToUpdate.lecturers, newLecturerUser]; // Add the new lecturer to the array
+  
+      // await updateCourse(courseId, { lecturers: updatedLecturers })
+  
+
+      toast({
+        title: "Lecturer Reassigned",
+        description: `The lecturer for course ${courseId} has been updated.`,
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reassign lecturer. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
@@ -56,23 +94,35 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
             <TableRow>
               <TableHead>Code</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead>Lecturer</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead>Lecturers</TableHead>
               {role === "hod" && <TableHead>Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {courseData.map((course) => (
-              <TableRow key={course.id}>
-                <TableCell className="font-medium">{course.code}</TableCell>
-                <TableCell>{course.name}</TableCell>
-                <TableCell>{course.lecturer}</TableCell>
-                {role === "hod" && (
-                  <TableCell>
-                    <Button onClick={() => handleReassignLecturer(course.id, "New Lecturer")}>Reassign</Button>
-                  </TableCell>
-                )}
+            {courses.length > 0 ? (
+              courses.map((course) => (
+                <TableRow key={course.id}>
+                  <TableCell className="font-medium">{course.code}</TableCell>
+                  <TableCell>{course.name}</TableCell>
+                  <TableCell>{course.department.name}</TableCell>
+                  <TableCell>{course.lecturers.map((lecturer) => lecturer?.username).join(", ") || "None"}</TableCell>
+                  {role === "hod" && (
+                    <TableCell>
+                      <Button onClick={() => handleReassignLecturer(course.id, "New Lecturer")}>
+                        Reassign
+                      </Button>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-gray-500">
+                  No courses available.
+                </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>
@@ -103,12 +153,12 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
                 />
               </div>
               <div className="grid w-full items-center gap-1.5">
-                <Label htmlFor="lecturerName">Lecturer Name</Label>
+                <Label htmlFor="department">Department</Label>
                 <Input
-                  id="lecturerName"
-                  value={newCourse.lecturer}
-                  onChange={(e) => setNewCourse({ ...newCourse, lecturer: e.target.value })}
-                  placeholder="e.g., Dr. John Doe"
+                  id="department"
+                  value={newCourse.department?.name}
+                  onChange={(e) => setNewCourse({ ...newCourse, department: { id: "", name: e.target.value, hod: null } })}
+                  placeholder="e.g., Computer Science"
                 />
               </div>
             </div>
@@ -121,4 +171,3 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
     </div>
   )
 }
-

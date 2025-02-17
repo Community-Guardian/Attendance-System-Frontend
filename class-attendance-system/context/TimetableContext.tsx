@@ -6,16 +6,16 @@ import { TIMETABLE_URL, TIMETABLE_PDF_URL } from '@/handler/apiConfig';
 
 interface TimetableContextProps {
   timetables: Timetable[];
-  timetablePDFs: TimetablePDF[];
+  // timetablePDFs: TimetablePDF[];
   loading: boolean;
   error: string | null;
   fetchTimetables: (filters?: Record<string, string | number | undefined>, ordering?: string) => void;
-  fetchTimetablePDFs: (filters?: Record<string, string | number | undefined>, ordering?: string) => void;
+  // fetchTimetablePDFs: (filters?: Record<string, string | number | undefined>, ordering?: string) => void;
   createTimetable: (newTimetable: Partial<Timetable>) => void;
   updateTimetable: (id: string, updatedData: Partial<Timetable>) => void;
   deleteTimetable: (id: string) => void;
-  uploadTimetablePDF: (newPDF: Partial<TimetablePDF>) => void;
-  deleteTimetablePDF: (id: string) => void;
+  // uploadTimetablePDF: (newPDF: Partial<TimetablePDF>) => void;
+  // deleteTimetablePDF: (id: string) => void;
   currentPage: number;
   totalPages: number;
   nextPage: () => void;
@@ -48,35 +48,35 @@ export const TimetableProvider = ({ children }: { children: ReactNode }) => {
     setPageSize,
   } = useApi<Timetable>(TIMETABLE_URL);
 
-  const {
-    data: timetablePDFs,
-    fetchData: fetchTimetablePDFs,
-    addItem: uploadTimetablePDF,
-    deleteItem: deleteTimetablePDF,
-  } = useApi<TimetablePDF>(TIMETABLE_PDF_URL);
+  // const {
+  //   data: timetablePDFs,
+  //   fetchData: fetchTimetablePDFs,
+  //   addItem: uploadTimetablePDF,
+  //   deleteItem: deleteTimetablePDF,
+  // } = useApi<TimetablePDF>(TIMETABLE_PDF_URL);
 
   const fetchTimetablesWithFilters = () => {
     fetchTimetables(filters);
   };
 
-  const fetchTimetablePDFsWithFilters = () => {
-    fetchTimetablePDFs(filters);
-  };
+  // const fetchTimetablePDFsWithFilters = () => {
+  //   fetchTimetablePDFs(filters);
+  // };
 
   return (
     <TimetableContext.Provider
       value={{
         timetables,
-        timetablePDFs,
+        // timetablePDFs,
         loading,
         error,
         fetchTimetables: fetchTimetablesWithFilters,
-        fetchTimetablePDFs: fetchTimetablePDFsWithFilters,
+        // fetchTimetablePDFs: fetchTimetablePDFsWithFilters,
         createTimetable,
         updateTimetable,
         deleteTimetable,
-        uploadTimetablePDF,
-        deleteTimetablePDF,
+        // uploadTimetablePDF,
+        // deleteTimetablePDF,
         currentPage,
         totalPages,
         nextPage,

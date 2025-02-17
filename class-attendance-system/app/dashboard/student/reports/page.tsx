@@ -1,12 +1,38 @@
-import type { Metadata } from "next"
+"use client"
+
+import { useEffect } from "react"
+import { useReports } from "@/context/ReportContext"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-export const metadata: Metadata = {
-  title: "Student Reports",
-  description: "View your attendance reports.",
-}
-
 export default function StudentReportsPage() {
+  const { 
+    attendanceReports, 
+    fetchAttendanceReports, 
+    loading, 
+    error 
+  } = useReports()
+
+  useEffect(() => {
+    fetchAttendanceReports()
+  }, [])
+
+  if (loading) return <p className="text-center">Loading reports...</p>
+  if (error) return <p className="text-center text-red-500">Error loading reports: {error}</p>
+
+  // Aggregate Data
+  const totalClasses = attendanceReports.length
+  const totalStudents = attendanceReports.reduce((sum, report) => sum + report.total_students, 0)
+  const totalPresent = attendanceReports.reduce((sum, report) => sum + report.students_present.length, 0)
+  const overallAttendance = totalStudents > 0 ? ((totalPresent / totalStudents) * 100).toFixed(1) : "0"
+
+  // Identify Perfect Attendance Courses
+  const perfectCourses = attendanceReports.filter(report => report.attendance_percentage === 100).length
+
+  // Find Lowest Attendance Course
+  const lowestAttendanceCourse = attendanceReports.reduce((lowest, report) =>
+    report.attendance_percentage < lowest.attendance_percentage ? report : lowest, attendanceReports[0]
+  )
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">My Reports</h1>
@@ -16,7 +42,7 @@ export default function StudentReportsPage() {
             <CardTitle className="text-sm font-medium">Overall Attendance</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">92%</div>
+            <div className="text-2xl font-bold">{overallAttendance}%</div>
           </CardContent>
         </Card>
         <Card>
@@ -24,7 +50,7 @@ export default function StudentReportsPage() {
             <CardTitle className="text-sm font-medium">Classes Attended</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">45/49</div>
+            <div className="text-2xl font-bold">{totalPresent}/{totalClasses}</div>
           </CardContent>
         </Card>
         <Card>
@@ -32,7 +58,7 @@ export default function StudentReportsPage() {
             <CardTitle className="text-sm font-medium">Perfect Attendance Courses</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
+            <div className="text-2xl font-bold">{perfectCourses}</div>
           </CardContent>
         </Card>
         <Card>
@@ -40,13 +66,15 @@ export default function StudentReportsPage() {
             <CardTitle className="text-sm font-medium">Lowest Attendance Course</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">85%</div>
-            <p className="text-xs text-muted-foreground">Mathematics 101</p>
+            <div className="text-2xl font-bold">
+              {lowestAttendanceCourse ? `${lowestAttendanceCourse.attendance_percentage}%` : "N/A"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {lowestAttendanceCourse ? lowestAttendanceCourse.course.name : "No Data"}
+            </p>
           </CardContent>
         </Card>
       </div>
-      {/* In a real application, you would fetch and display more detailed reports here */}
     </div>
   )
 }
-
