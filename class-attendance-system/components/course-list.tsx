@@ -23,13 +23,14 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
     },
     students: [],
   })
+  const [editingCourse, setEditingCourse] = useState<Partial<Course> | null>(null)
 
   useEffect(() => {
     fetchCourses() // Fetch courses when the component mounts
   }, [])
 
   const handleAddCourse = async () => {
-    if (role !== "config") return
+    if (role !== "config" && role !== "dp_academics") return
     if (!newCourse.code || !newCourse.name || !newCourse.department) {
       toast({
         title: "Missing Information",
@@ -59,27 +60,24 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
     }
   }
 
-  const handleReassignLecturer = async (courseId: string, newLecturer: string) => {
-    if (role !== "hod") return
+  const handleEditCourse = (course: Course) => {
+    setEditingCourse(course)
+  }
+
+  const handleUpdateCourse = async () => {
+    if (!editingCourse || role !== "config" && role !== "dp_academics") return
 
     try {
-      const courseToUpdate = courses.find(course => course.id === courseId)
-      if (!courseToUpdate) return
-
-      const newLecturerUser: Partial<User> = { id: newLecturer, username: newLecturer }; // Create a new User object for the new lecturer
-      const updatedLecturers = [...courseToUpdate.lecturers, newLecturerUser]; // Add the new lecturer to the array
-  
-      // await updateCourse(courseId, { lecturers: updatedLecturers })
-  
-
+      await updateCourse(editingCourse.id!, editingCourse)
+      setEditingCourse(null) // Clear editing state
       toast({
-        title: "Lecturer Reassigned",
-        description: `The lecturer for course ${courseId} has been updated.`,
+        title: "Course Updated",
+        description: "The course has been updated successfully.",
       })
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to reassign lecturer. Please try again.",
+        description: "Failed to update the course. Please try again.",
         variant: "destructive",
       })
     }
@@ -96,7 +94,7 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
               <TableHead>Name</TableHead>
               <TableHead>Department</TableHead>
               <TableHead>Lecturers</TableHead>
-              {role === "hod" && <TableHead>Actions</TableHead>}
+              {(role === "hod" || role === "config" || role === "dp_academics") && <TableHead>Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -107,11 +105,16 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
                   <TableCell>{course.name}</TableCell>
                   <TableCell>{course.department.name}</TableCell>
                   <TableCell>{course.lecturers.map((lecturer) => lecturer?.username).join(", ") || "None"}</TableCell>
-                  {role === "hod" && (
+                  {(role === "hod" || role === "config" || role === "dp_academics") && (
                     <TableCell>
-                      <Button onClick={() => handleReassignLecturer(course.id, "New Lecturer")}>
-                        Reassign
-                      </Button>
+                      {role === "hod" && (
+                        <Button onClick={() => handleReassignLecturer(course.id, "New Lecturer")}>
+                          Reassign
+                        </Button>
+                      )}
+                      {(role === "config" || role === "dp_academics") && (
+                        <Button onClick={() => handleEditCourse(course)}>Edit</Button>
+                      )}
                     </TableCell>
                   )}
                 </TableRow>
@@ -127,10 +130,10 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
         </Table>
       </div>
 
-      {role === "config" && (
+      {(role === "config" || role === "dp_academics") && (
         <Card>
           <CardHeader>
-            <CardTitle>Add New Course</CardTitle>
+            <CardTitle>{editingCourse ? "Edit Course" : "Add New Course"}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -138,8 +141,12 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
                 <Label htmlFor="courseCode">Course Code</Label>
                 <Input
                   id="courseCode"
-                  value={newCourse.code}
-                  onChange={(e) => setNewCourse({ ...newCourse, code: e.target.value })}
+                  value={editingCourse ? editingCourse.code : newCourse.code}
+                  onChange={(e) =>
+                    editingCourse
+                      ? setEditingCourse({ ...editingCourse, code: e.target.value })
+                      : setNewCourse({ ...newCourse, code: e.target.value })
+                  }
                   placeholder="e.g., CS101"
                 />
               </div>
@@ -147,8 +154,12 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
                 <Label htmlFor="courseName">Course Name</Label>
                 <Input
                   id="courseName"
-                  value={newCourse.name}
-                  onChange={(e) => setNewCourse({ ...newCourse, name: e.target.value })}
+                  value={editingCourse ? editingCourse.name : newCourse.name}
+                  onChange={(e) =>
+                    editingCourse
+                      ? setEditingCourse({ ...editingCourse, name: e.target.value })
+                      : setNewCourse({ ...newCourse, name: e.target.value })
+                  }
                   placeholder="e.g., Introduction to Computer Science"
                 />
               </div>
@@ -156,18 +167,29 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
                 <Label htmlFor="department">Department</Label>
                 <Input
                   id="department"
-                  value={newCourse.department?.name}
-                  onChange={(e) => setNewCourse({ ...newCourse, department: { id: "", name: e.target.value, hod: null } })}
+                  value={editingCourse ? editingCourse.department?.name : newCourse.department?.name}
+                  onChange={(e) =>
+                    editingCourse
+                      ? setEditingCourse({ ...editingCourse, department: { id: "", name: e.target.value, hod: null } })
+                      : setNewCourse({ ...newCourse, department: { id: "", name: e.target.value, hod: null } })
+                  }
                   placeholder="e.g., Computer Science"
                 />
               </div>
             </div>
-            <Button onClick={handleAddCourse} className="mt-4">
-              Add Course
-            </Button>
+            {editingCourse ? (
+              <Button onClick={handleUpdateCourse} className="mt-4">
+                Update Course
+              </Button>
+            ) : (
+              <Button onClick={handleAddCourse} className="mt-4">
+                Add Course
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
     </div>
   )
 }
+
