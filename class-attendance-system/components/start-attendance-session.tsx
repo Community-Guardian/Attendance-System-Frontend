@@ -29,15 +29,17 @@ export function StartAttendanceSession() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadData() {
-      await fetchCourses();
-      await fetchUser();
-      await fetchTimetables();
-      await fetchGeolocationZones();
+    const loadData = async () => {
+      // Check if data is already fetched to avoid unnecessary requests
+      if (!courses.length) await fetchCourses();
+      if (!user) await fetchUser();
+      if (!timetables.length) await fetchTimetables();
+      if (!geolocationZones.length) await fetchGeolocationZones();
+
       setLoading(false);
-    }
+    };
     loadData();
-  }, []);
+  }, [courses, user, timetables, geolocationZones, fetchCourses, fetchUser, fetchTimetables, fetchGeolocationZones]);
 
   useEffect(() => {
     if (user && user.role === "lecturer") {
@@ -69,14 +71,14 @@ export function StartAttendanceSession() {
       const newSession = {
         timetable_id: timetableId,
         lecturer_id: lecturerId,
-        course_id: courseId, // ✅ Ensuring `course_id` is correctly sent
+        course_id: courseId,
         start_time: new Date().toISOString(),
         end_time: new Date(endTime).toISOString(),
         is_makeup_class: isMakeupClass,
         geolocation_zone_id: geolocationZone,
       };
 
-      console.log("🚀 Sending Payload:", newSession); // ✅ Debugging output
+      console.log("🚀 Sending Payload:", newSession);
 
       await createAttendanceSession(newSession);
 
