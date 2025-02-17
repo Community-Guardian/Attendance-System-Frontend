@@ -1,17 +1,19 @@
 import type { Metadata } from "next"
-import { Calendar } from "@/components/ui/calendar"
+import { Suspense } from "react"
+import { ScheduleDashboard } from "../components/schedule-dashboard"
+import { LoadingSchedule } from "../components/loading-schedule"
 
 export const metadata: Metadata = {
-  title: "Student Schedule",
-  description: "View your class schedule.",
+  title: "Class Schedule",
+  description: "View your class schedule and active sessions",
 }
 
-export default function StudentSchedulePage() {
+export default function SchedulePage() {
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">My Schedule</h1>
-      <Calendar />
-      {/* In a real application, you would fetch and display the student's schedule here */}
+    <div className="container mx-auto py-6 space-y-6">
+      <Suspense fallback={<LoadingSchedule />}>
+        <ScheduleDashboard />
+      </Suspense>
     </div>
   )
 }
