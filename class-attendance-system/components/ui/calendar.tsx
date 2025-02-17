@@ -1,119 +1,138 @@
-"use client"
-
-import * as React from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker, Day } from "react-day-picker"
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
-import moment from "moment"
-
-export type CalendarProps = React.ComponentProps<typeof DayPicker>
-
-// Dummy data representing classes in time slots
-const timeSlots = [
-  { start: "7:00 AM", end: "10:00 AM", title: "Class 1" },
-  { start: "10:00 AM", end: "1:00 PM", title: "Class 2" },
-  { start: "1:00 PM", end: "4:00 PM", title: "Class 3" },
-  { start: "4:00 PM", end: "7:00 PM", title: "Class 4" },
-]
-
-const generateDummyClasses = () => {
-  const classes = []
-  const weekStart = moment().startOf("week").add(1, "day") // Start from Monday
-
-  // Generate classes for Monday to Friday
-  for (let i = 0; i < 5; i++) {
-    const day = weekStart.clone().add(i, "days")
-    timeSlots.forEach((slot) => {
-      classes.push({
-        date: day.format("YYYY-MM-DD"),
-        title: slot.title,
-        time: `${slot.start} - ${slot.end}`,
-      })
-    })
-  }
-  return classes
+import { useState } from "react";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from "date-fns";
+import clsx from "clsx";
+import { Timetable } from "@/types/timetables";
+import { AttendanceSession } from "@/types/attendance";
+import { Course } from "@/types/courses";
+import { User } from "@/types";
+import { GeolocationZone } from "@/types/geolocation";
+type Event = {
+  type: "session"| "timetable";
+  time: Date;
+  id: string;
+  timetable: Partial<Timetable>;
+  lecturer: Partial<User>;
+  course: Partial<Course>;
+  start_time: string;
+  end_time: string;
+  is_makeup_class: boolean;
+  geolocation_zone: Partial<GeolocationZone>;
+};
+interface ScheduleEvent extends Event {
+  type: "session" | "timetable";
+  time: Date;
+  timetable: Partial<Timetable>;
+  lecturer: Partial<User>;
+  course: Partial<Course>;
+  geolocation_zone: Partial<GeolocationZone>;
+}
+interface CalendarProps {
+  events: ScheduleEvent[]
+  holidays: { date: string; name: string }[]; // [{ date: "2025-02-20", name: "Public Holiday" }]
+  selectedDate?: Date; // Add selectedDate as an optional prop
+  onSelect?: (date: Date) => void; // Add onSelect function to handle date selection
 }
 
-function Calendar({
-  className,
-  classNames,
-  showOutsideDays = true,
-  ...props
-}: CalendarProps) {
-  const [classes, setClasses] = React.useState<any[]>([])
+export function Calendar({ events = [], holidays = [], selectedDate, onSelect }: CalendarProps) {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  React.useEffect(() => {
-    const dummyClasses = generateDummyClasses()
-    setClasses(dummyClasses)
-  }, [])
+  // Get the first and last day of the month
+  const firstDay = startOfMonth(currentMonth);
+  const lastDay = endOfMonth(currentMonth);
 
-  const renderClassesForDay = (date: Date) => {
-    const dateString = moment(date).format("YYYY-MM-DD")
-    const classesForDay = classes.filter((c) => c.date === dateString)
-    return classesForDay.map((c, index) => (
-      <div key={index} className="text-xs text-gray-700 bg-blue-100 p-1 rounded-md mt-1">
-        {c.title} ({c.time})
-      </div>
-    ))
-  }
+  // Generate all days in the month
+  const daysInMonth = eachDayOfInterval({ start: firstDay, end: lastDay });
+
+  // Days of the week (Monday - Sunday)
+  const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  // Get the start day of the month (0 = Sunday, 6 = Saturday)
+  const startDayIndex = getDay(firstDay) === 0 ? 6 : getDay(firstDay) - 1; // Adjust for Monday start
+
+  // Memoize holidays lookup for better performance
+  const holidayMap = new Map(holidays.map(h => [h.date, h.name]));
+
+  const handleDayClick = (date: Date) => {
+    if (onSelect) {
+      onSelect(date); // Call the onSelect function passed in as a prop
+    }
+  };
 
   return (
-    <DayPicker
-      showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
-      classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
-        nav: "space-x-1 flex items-center",
-        nav_button: cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
-        ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
-        head_row: "flex",
-        head_cell:
-          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-        row: "flex w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-        day: cn(
-          buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
-        ),
-        day_range_end: "day-range-end",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
-        day_outside:
-          "day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
-        day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
-          "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
-        ...classNames,
-      }}
-      {...props}
-      components={{
-        day: (props: any) => {
-          const { date } = props
+    <div className="space-y-4">
+      {/* Month Selector */}
+      <div className="flex justify-between items-center">
+        <button
+          className="p-2 bg-gray-200 rounded"
+          onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))}
+        >
+          &larr; Previous
+        </button>
+        <h2 className="text-lg font-semibold">{format(currentMonth, "MMMM yyyy")}</h2>
+        <button
+          className="p-2 bg-gray-200 rounded"
+          onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() + 1)))}
+        >
+          Next &rarr;
+        </button>
+      </div>
+
+      {/* Days of the week headers */}
+      <div className="grid grid-cols-7 gap-2 text-center font-bold">
+        {weekDays.map((day) => (
+          <div key={day}>{day}</div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-2">
+        {/* Empty spaces before the first day */}
+        {Array.from({ length: startDayIndex }).map((_, index) => (
+          <div key={`empty-${index}`} className="p-4"></div>
+        ))}
+
+        {/* Render each day */}
+        {daysInMonth.map((date) => {
+          const dateStr = format(date, "yyyy-MM-dd");
+
+          // Default to empty array if the event is not found in the events object
+          const dayEvents = events.filter(event => format(event.time, "yyyy-MM-dd") === dateStr);
+          const holiday = holidayMap.get(dateStr);
+
           return (
-            <div className="relative">
-              <div {...props} />
-              <div className="absolute top-full left-0 w-full">
-                {renderClassesForDay(date)}
-              </div>
+            <div
+              key={dateStr}
+              className={clsx(
+                "p-2 border rounded-md flex flex-col items-center text-sm relative",
+                holiday && "bg-red-100 border-red-400",
+                dayEvents.length > 0 && "bg-blue-50 border-blue-400",
+                selectedDate?.toDateString() === date.toDateString() && "bg-blue-200" // Highlight selected day
+              )}
+              onClick={() => handleDayClick(date)} // Call the click handler
+            >
+              <span className="font-semibold">{format(date, "d")}</span>
+
+              {/* Holiday Label */}
+              {holiday && (
+                <div className="absolute top-0 text-xs bg-red-500 text-white px-1 rounded-md">
+                  {holiday}
+                </div>
+              )}
+
+              {/* Events */}
+              {dayEvents.length > 0 && (
+                <div className="mt-2 w-full">
+                  {dayEvents.map((event, index) => (
+                    <div key={index} className="text-xs bg-blue-200 rounded px-1 py-0.5 mt-1 text-center">
+                      {event.course.code} {/* or any other property that is a string or a React component */}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )
-        },
-      }}
-    />
-  )
+          );
+        })}
+      </div>
+    </div>
+  );
 }
-
-Calendar.displayName = "Calendar"
-
-export { Calendar }

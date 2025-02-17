@@ -5,7 +5,7 @@ export interface AttendanceReport {
     id: string;
     course: Partial<Course>;
     total_students: number;
-    students_present: Partial<User>[];
+    students_present: number;
     attendance_percentage: number;
     report_date: string;
   }
