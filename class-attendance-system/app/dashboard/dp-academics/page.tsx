@@ -2,9 +2,9 @@ import type { Metadata } from "next"
 import { Activity, Book, School, BarChart } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { InstitutionOverview } from "@/components/institution-overview"
-import { AttendanceReports } from "@/components/attendance-reports"
-import { CatConformanceReports } from "@/components/cat-conformance-reports"
+// import { InstitutionOverview } from "@/components/institution-overview"
+// import { AttendanceReports } from "@/components/attendance-reports"
+// import { CatConformanceReports } from "@/components/cat-conformance-reports"
 
 export const metadata: Metadata = {
   title: "DP Academics Dashboard",
@@ -58,7 +58,7 @@ export default function DPAcademicsDashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+      {/* <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
             <CardTitle>Institution Overview</CardTitle>
@@ -84,8 +84,8 @@ export default function DPAcademicsDashboardPage() {
         <CardContent>
           <CatConformanceReports />
         </CardContent>
-      </Card>
-    </div>
+      </Card> */}
+    </div> 
   )
 }
 

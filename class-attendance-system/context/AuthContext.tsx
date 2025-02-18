@@ -111,6 +111,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       Cookies.remove('accessToken');
       Cookies.remove('refreshToken');
       setIsAuthenticated(false); // Set to false on logout
+      
     } catch (err) {
       setError((err as AxiosError).message || 'Logout failed');
     } finally {

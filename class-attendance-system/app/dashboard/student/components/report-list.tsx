@@ -31,7 +31,7 @@ export function ReportList() {
           {attendanceReports.map((report) => (
             <TableRow key={report.id}>
               <TableCell className="font-medium">{report.course.name}</TableCell>
-              <TableCell>{new Date(report.date).toLocaleDateString()}</TableCell>
+              <TableCell>{new Date(report.report_date).toLocaleDateString()}</TableCell>
               <TableCell>{report.attendance_percentage}%</TableCell>
               <TableCell>
                 <Badge

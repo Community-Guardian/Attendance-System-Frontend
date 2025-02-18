@@ -10,17 +10,19 @@ import { AttendanceCalculator } from "@/components/attendance-calculator"
 import { SignAttendanceModal } from "./sign-attendance-modal"
 import { Button } from "@/components/ui/button"
 import { Calendar, Calculator, History } from "lucide-react"
-
+import { LoadingDashboard } from "./loading-dashboard"
 export function StudentDashboard() {
   const [showSignModal, setShowSignModal] = useState(false)
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
-  const { fetchAttendanceSessions, fetchAttendanceRecords } = useAttendance()
+  const { fetchAttendanceSessions, fetchAttendanceRecords , loading } = useAttendance()
 
   useEffect(() => {
     fetchAttendanceSessions()
     fetchAttendanceRecords()
-  }, [fetchAttendanceSessions, fetchAttendanceRecords])
-
+  }, [])
+  if (loading) {
+    return <LoadingDashboard />
+  }
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

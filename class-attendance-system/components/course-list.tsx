@@ -83,6 +83,10 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
     }
   }
 
+  function handleReassignLecturer(id: string, arg1: string): void {
+    throw new Error("Function not implemented.")
+  }
+
   return (
     <div className="space-y-4">
       <div className="overflow-x-auto">

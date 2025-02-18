@@ -11,16 +11,16 @@ import { userAuthSchema } from "@/lib/validations/auth";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Icons } from "@/components/icons";
-
+import Cookies from "js-cookie";
 type FormData = z.infer<typeof userAuthSchema>;
 
 export function UserAuthForm({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   const { login } = useAuth(); // Get login function from AuthContext
   const { user, fetchUser, loading } = useUser(); // Fetch user after login
   const router = useRouter();
-
+  const {toast} = useToast();
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
   const {
@@ -52,7 +52,7 @@ export function UserAuthForm({ className, ...props }: React.HTMLAttributes<HTMLD
 
   // Redirect user after login once user data is available
   React.useEffect(() => {
-    if (user && !loading) {
+    if ( !!Cookies.get("accessToken") && user && !loading) {
       switch (user.role) {
         case "student":
           router.push("/dashboard/student");

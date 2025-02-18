@@ -14,7 +14,7 @@ export default function LecturerCoursesPage() {
         <h1 className="text-3xl font-bold">My Courses</h1>
         <Button>Add New Course</Button>
       </div>
-      <CourseList />
+      <CourseList role="lecturer" />
     </div>
   )
 }

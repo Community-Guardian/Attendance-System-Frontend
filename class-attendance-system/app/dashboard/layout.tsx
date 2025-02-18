@@ -5,7 +5,8 @@ import Cookies from "js-cookie"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
-// call all providers
+
+// Call all providers
 import { AttendanceProvider } from "@/context/AttendanceContext"
 import { BorrowAccountsProvider } from "@/context/BorrowAccountsContext"
 import { ConfigProvider } from "@/context/ConfigContext"
@@ -13,8 +14,9 @@ import { CoursesProvider } from "@/context/CoursesContext"
 import { GeolocationProvider } from "@/context/GeoLocationContext"
 import { ReportsProvider } from "@/context/ReportContext"
 import { TimetableProvider } from "@/context/TimetableContext"
-import {  useUser } from "@/context/userContext"
+import { useAuth } from "@/context/AuthContext"
 import FullPageLoader from "@/components/custom/FullPageLoader"
+
 export default function DashboardLayout({
   children,
   params,
@@ -23,48 +25,50 @@ export default function DashboardLayout({
   params: { role: "student" | "lecturer" | "hod" | "dp_academics" | "config" }
 }) {
   const router = useRouter()
-  const {toast} = useToast()
+  const { toast } = useToast()
+  const { loading } = useAuth()
+
   useEffect(() => {
-    try {
-      if (!Cookies.get("accessToken")) {
-        toast({
-          title: "Unauthorized",
-          description: "You need to login to access this page",
-          variant: "destructive",
-        })
-        setTimeout(() => router.push("/login"), 3000)
-      }
-    } catch (error) {
-      console.error("Toast error:", error)
+    // Show toast only if no token and not loading
+    if (!loading && !Cookies.get("accessToken")) {
+      toast({
+        title: "Unauthorized",
+        description: "You need to login to access this page",
+        variant: "default",
+      })
+
+      // Redirect after showing the toast
+      setTimeout(() => {
+        router.replace("/login")
+      }, 3000)
     }
-  }, [])
-  const {loading} = useUser()
+  }, [loading, router, toast]) // Ensures it only runs once after loading and token check
 
-
-  if (loading) {
-    return <FullPageLoader message="Syncing Your details...." />;
+  // If still loading or no access token, show the full-page loader
+  if (loading || !Cookies.get("accessToken")) {
+    return <FullPageLoader message="Please wait...." />
   }
+
   return (
-  <div className="flex flex-col h-screen lg:flex-row">
-    <Sidebar/>
-    <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+    <div className="flex flex-col h-screen lg:flex-row">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto p-4 lg:p-8">
         <AttendanceProvider>
           <BorrowAccountsProvider>
-              <ConfigProvider>
-                <CoursesProvider>
-                  <GeolocationProvider>
-                    <ReportsProvider>
-                      <TimetableProvider>
-                          {children}
-                      </TimetableProvider>
-                    </ReportsProvider>
-                  </GeolocationProvider>
-                </CoursesProvider>
-              </ConfigProvider>
+            <ConfigProvider>
+              <CoursesProvider>
+                <GeolocationProvider>
+                  <ReportsProvider>
+                    <TimetableProvider>
+                      {children}
+                    </TimetableProvider>
+                  </ReportsProvider>
+                </GeolocationProvider>
+              </CoursesProvider>
+            </ConfigProvider>
           </BorrowAccountsProvider>
-        </AttendanceProvider>         
-    </main>
-  </div>
+        </AttendanceProvider>
+      </main>
+    </div>
   )
 }
-

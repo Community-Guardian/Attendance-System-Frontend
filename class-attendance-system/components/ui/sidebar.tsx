@@ -23,29 +23,37 @@ import {
   User,
   BarChart,
   LogOut,
+  Loader2,
 } from "lucide-react"
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { useToast } from "@/hooks/use-toast"
+import { useState } from "react"
+import { useAuth } from "@/context/AuthContext"
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, logout, loading } = useUser()
+  const { user,  loading } = useUser()
+  const {logout} = useAuth()
   const [isOpen, setIsOpen] = React.useState(false)
 
   React.useEffect(() => {
     if (!loading && !user) {
-      router.push("/login") // Redirect if no user
+      router.replace("/login") // Redirect if no user
     }
   }, [user, loading, router])
 
-  if (loading) {
-    return null // Don't show the sidebar while loading
-  }
 
-  if (!user) {
-    return null // Prevent rendering if no user
-  }
-
-  const role = user.role as keyof typeof routes
+  const role = user?.role as keyof typeof routes
 
   const routes = {
     student: [
@@ -64,50 +72,63 @@ export function Sidebar() {
       { href: "/dashboard/lecturer/reports", icon: FileText, title: "Reports" },
       { href: "/dashboard/lecturer/settings", icon: Settings, title: "Settings" },
     ],
-    hod: [
-      { href: "/dashboard/hod", icon: Home, title: "Dashboard" },
-      { href: "/dashboard/hod/courses", icon: BookOpen, title: "Courses" },
-      { href: "/dashboard/hod/lecturers", icon: Users, title: "Lecturers" },
-      { href: "/dashboard/hod/students", icon: User, title: "Students" },
-      { href: "/dashboard/hod/attendance", icon: Activity, title: "Attendance" },
-      { href: "/dashboard/hod/timetable", icon: Calendar, title: "Timetable" },
-      { href: "/dashboard/hod/reports", icon: FileText, title: "Reports" },
-      { href: "/dashboard/hod/settings", icon: Settings, title: "Settings" },
-    ],
-    dp_academics: [
-      { href: "/dashboard/dp-academics", icon: Home, title: "Dashboard" },
-      { href: "/dashboard/dp-academics/departments", icon: School, title: "Departments" },
-      { href: "/dashboard/dp-academics/courses", icon: BookOpen, title: "Courses" },
-      { href: "/dashboard/dp-academics/attendance", icon: Activity, title: "Attendance" },
-      { href: "/dashboard/dp-academics/timetable", icon: Calendar, title: "Timetable" },
-      { href: "/dashboard/dp-academics/reports", icon: FileText, title: "Reports" },
-      { href: "/dashboard/dp-academics/settings", icon: Settings, title: "Settings" },
-    ],
-    config_user: [
-      { href: "/dashboard/config", icon: Home, title: "Dashboard" },
-      { href: "/dashboard/config/users", icon: UserCog, title: "User Management" },
-      { href: "/dashboard/config/courses", icon: BookOpen, title: "Courses" },
-      { href: "/dashboard/config/departments", icon: School, title: "Departments" },
-      { href: "/dashboard/config/timetables", icon: Calendar, title: "Timetables" },
-      { href: "/dashboard/config/geolocation", icon: Map, title: "Geolocation" },
-      { href: "/dashboard/config/system", icon: Settings, title: "System Config" },
-      { href: "/dashboard/config/logs", icon: BarChart, title: "System Logs" },
-    ],
-    admin: [
-      { href: "/dashboard/admin", icon: Home, title: "Admin Dashboard" },
-      { href: "/dashboard/admin/users", icon: Users, title: "Manage Users" },
-      { href: "/dashboard/admin/settings", icon: Settings, title: "Settings" },
-    ],
+    // hod: [
+    //   { href: "/dashboard/hod", icon: Home, title: "Dashboard" },
+    //   { href: "/dashboard/hod/courses", icon: BookOpen, title: "Courses" },
+    //   { href: "/dashboard/hod/lecturers", icon: Users, title: "Lecturers" },
+    //   { href: "/dashboard/hod/students", icon: User, title: "Students" },
+    //   { href: "/dashboard/hod/attendance", icon: Activity, title: "Attendance" },
+    //   { href: "/dashboard/hod/timetable", icon: Calendar, title: "Timetable" },
+    //   { href: "/dashboard/hod/reports", icon: FileText, title: "Reports" },
+    //   { href: "/dashboard/hod/settings", icon: Settings, title: "Settings" },
+    // ],
+    // dp_academics: [
+    //   { href: "/dashboard/dp-academics", icon: Home, title: "Dashboard" },
+    //   { href: "/dashboard/dp-academics/departments", icon: School, title: "Departments" },
+    //   { href: "/dashboard/dp-academics/courses", icon: BookOpen, title: "Courses" },
+    //   { href: "/dashboard/dp-academics/attendance", icon: Activity, title: "Attendance" },
+    //   { href: "/dashboard/dp-academics/timetable", icon: Calendar, title: "Timetable" },
+    //   { href: "/dashboard/dp-academics/reports", icon: FileText, title: "Reports" },
+    //   { href: "/dashboard/dp-academics/settings", icon: Settings, title: "Settings" },
+    // ],
+    // config_user: [
+    //   { href: "/dashboard/config", icon: Home, title: "Dashboard" },
+    //   { href: "/dashboard/config/users", icon: UserCog, title: "User Management" },
+    //   { href: "/dashboard/config/courses", icon: BookOpen, title: "Courses" },
+    //   { href: "/dashboard/config/departments", icon: School, title: "Departments" },
+    //   { href: "/dashboard/config/timetables", icon: Calendar, title: "Timetables" },
+    //   { href: "/dashboard/config/geolocation", icon: Map, title: "Geolocation" },
+    //   { href: "/dashboard/config/system", icon: Settings, title: "System Config" },
+    //   { href: "/dashboard/config/logs", icon: BarChart, title: "System Logs" },
+    // ],
+    // admin: [
+    //   { href: "/dashboard/admin", icon: Home, title: "Admin Dashboard" },
+    //   { href: "/dashboard/admin/users", icon: Users, title: "Manage Users" },
+    //   { href: "/dashboard/admin/settings", icon: Settings, title: "Settings" },
+    // ],
   }
 
   const currentRoutes = routes[role] || routes.student
+  const [loggingOut, setLoggingOut] = useState(false)
 
+  const { toast } = useToast()
   const handleLogout = async () => {
     try {
+      setLoggingOut(true)
       await logout()
-      router.push("/login")
+      toast({
+        title: "Logged out successfully",
+        description: "You have been logged out of your account",
+      })
+      router.replace("/login")
     } catch (error) {
-      console.error("Logout failed:", error)
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoggingOut(false)
     }
   }
 
@@ -138,14 +159,31 @@ export function Sidebar() {
                 {route.title}
               </Link>
             ))}
-            <Button
-              variant="destructive"
-              className="mt-4 flex items-center gap-2 w-full text-sm font-medium bg-red-500 hover:bg-red-600 text-white"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-5 w-5" />
-              Logout
-            </Button>
+                <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure you want to sign out?</AlertDialogTitle>
+                    <AlertDialogDescription>You will need to sign in again to access your account.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleLogout}
+                      disabled={loggingOut}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {loggingOut && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Sign Out
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
           </nav>
         </SheetContent>
       </Sheet>
@@ -173,10 +211,31 @@ export function Sidebar() {
                   {route.title}
                 </Link>
               ))}
-              <Button variant="destructive" onClick={handleLogout}>
-                <LogOut className="h-5 w-5" />
-                Logout
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure you want to sign out?</AlertDialogTitle>
+                    <AlertDialogDescription>You will need to sign in again to access your account.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleLogout}
+                      disabled={loggingOut}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {loggingOut && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Sign Out
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </ScrollArea>

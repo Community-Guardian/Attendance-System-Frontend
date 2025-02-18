@@ -75,7 +75,7 @@ export default function LecturerReportsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="py-4 text-center text-gray-600 dark:text-gray-400">No reports available</td>
+                  <td colSpan={5} className="py-4 text-center text-gray-600 dark:text-gray-400">No reports available</td>
                 </tr>
               )}
             </tbody>

@@ -87,7 +87,7 @@ export function StartAttendanceSession() {
         title: "Attendance Session Started",
         description: `Session started for course ${courseId} until ${endTime}.`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Error Response:", error.response?.data || error.message);
       toast({
         title: "Error Starting Session",
@@ -138,7 +138,7 @@ export function StartAttendanceSession() {
           <option value="">Select a timetable</option>
           {timetables.map((timetable) => (
             <option key={timetable.id} value={timetable.id}>
-              {timetable.course_code} - {timetable.day} {timetable.start_time} - {timetable.end_time}
+              {timetable.course.code} - {timetable.day_of_week} {timetable.start_time} - {timetable.end_time}
             </option>
           ))}
         </select>

@@ -37,9 +37,7 @@ export function WeeklySchedule({ selectedDate, onSessionClick, loading }: Weekly
           const dayEvents = [
             ...attendanceSessions.filter(
               (session) => new Date(session.start_time).toDateString() === day.toDateString(),
-            ),
-            ...timetables.filter((entry) => new Date(entry.day_of_week).toDateString() === day.toDateString()),
-          ]
+            )          ]
 
           return (
             <Card key={day.toISOString()} className="p-4">
@@ -56,7 +54,7 @@ export function WeeklySchedule({ selectedDate, onSessionClick, loading }: Weekly
                       <div className="font-medium">
                         {format(new Date(event.start_time), "HH:mm")} - {format(new Date(event.end_time), "HH:mm")}
                       </div>
-                      <div className="text-muted-foreground">{event.course.code}</div>
+                      <div className="text-muted-foreground">{event.course?.name}</div>
                     </div>
                   ))}
                 </div>

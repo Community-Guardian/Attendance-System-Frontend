@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState,useEffect } from "react"
 import { useUser } from "@/context/userContext"
 import { useAuth } from "@/context/AuthContext"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -10,7 +10,7 @@ import { DeviceManagement } from "./device-management"
 import { ActivityLog } from "./activity-log"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { Loader2, LogOut } from "lucide-react"
 import {
   AlertDialog,
@@ -24,13 +24,16 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { LoadingSettings } from "./loading-settings"
-
+import { useRouter } from "next/navigation"
 export function AccountSettings() {
-  const { user, loading: userLoading } = useUser()
+  const { user, loading: userLoading,fetchUser } = useUser()
   const { logout } = useAuth()
   const { toast } = useToast()
   const [loggingOut, setLoggingOut] = useState(false)
-
+  useEffect(() => {
+    fetchUser()
+  }, [])
+  const router = useRouter()
   const handleLogout = async () => {
     try {
       setLoggingOut(true)
@@ -39,6 +42,7 @@ export function AccountSettings() {
         title: "Logged out successfully",
         description: "You have been logged out of your account",
       })
+      router.replace("/login")
     } catch (error) {
       toast({
         title: "Error",

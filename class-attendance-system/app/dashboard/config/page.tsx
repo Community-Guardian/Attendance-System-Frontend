@@ -2,9 +2,9 @@ import type { Metadata } from "next"
 import { Users, Settings, Map, BarChart } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserManagement } from "@/components/user-management"
-import { GeolocationSettings } from "@/components/geolocation-settings"
-import { SystemConfiguration } from "@/components/system-configuration"
+// import { UserManagement } from "@/components/user-management"
+// import { GeolocationSettings } from "@/components/geolocation-settings"
+// import { SystemConfiguration } from "@/components/system-configuration"
 
 export const metadata: Metadata = {
   title: "Config User Dashboard",
@@ -58,7 +58,7 @@ export default function ConfigDashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+      {/* <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
             <CardTitle>User Management</CardTitle>
@@ -84,7 +84,7 @@ export default function ConfigDashboardPage() {
         <CardContent>
           <SystemConfiguration />
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   )
 }
