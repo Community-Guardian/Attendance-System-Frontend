@@ -49,6 +49,9 @@ This is the frontend application for the Class Attendance System. It is built us
     ```
 
 2. Open your browser and navigate to `http://localhost:3000`.
+📸 Screenshots
+
+![attendance](https://github.com/user-attachments/assets/08413258-c61c-4338-bda9-46d0857bbbba)
 
 
 ## Contributing
