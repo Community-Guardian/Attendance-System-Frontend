@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,82 +10,54 @@ import { toast } from "@/components/ui/use-toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useCourses } from "@/context/CoursesContext"
 import { Course } from "@/types/courses"
-import { User } from "@/types"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { MoreHorizontal } from "lucide-react"
+
 export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "dp_academics" | "config" }) {
   const { courses, fetchCourses, createCourse, updateCourse } = useCourses()
   const [newCourse, setNewCourse] = useState<Partial<Course>>({
     code: "",
     name: "",
     lecturers: [],
-    department: {
-      id: "",
-      name: "",
-      hod: null
-    },
+    department: { id: "", name: "", hod: null },
     students: [],
   })
   const [editingCourse, setEditingCourse] = useState<Partial<Course> | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
-    fetchCourses() // Fetch courses when the component mounts
+    fetchCourses()
   }, [])
 
   const handleAddCourse = async () => {
     if (role !== "config" && role !== "dp_academics") return
+
     if (!newCourse.code || !newCourse.name || !newCourse.department) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all fields for the new course.",
-        variant: "destructive",
-      })
+      toast({ title: "Missing Information", description: "Fill in all fields.", variant: "destructive" })
       return
     }
-    
+
     try {
       await createCourse(newCourse)
-      setNewCourse({ code: "", name: "", lecturers: [], department: {
-        id: "",
-        name: "",
-        hod: null
-      }, students: [] }) // Reset form
-      toast({
-        title: "Course Added",
-        description: "The new course has been added successfully.",
-      })
+      setNewCourse({ code: "", name: "", lecturers: [], department: { id: "", name: "", hod: null }, students: [] })
+      toast({ title: "Course Added", description: "Successfully added." })
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add the course. Please try again.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Failed to add course.", variant: "destructive" })
     }
   }
 
-  const handleEditCourse = (course: Course) => {
-    setEditingCourse(course)
-  }
+  const handleEditCourse = (course: Course) => setEditingCourse(course)
 
   const handleUpdateCourse = async () => {
-    if (!editingCourse || role !== "config" && role !== "dp_academics") return
+    if (!editingCourse || (role !== "config" && role !== "dp_academics")) return
 
     try {
       await updateCourse(editingCourse.id!, editingCourse)
-      setEditingCourse(null) // Clear editing state
-      toast({
-        title: "Course Updated",
-        description: "The course has been updated successfully.",
-      })
+      setEditingCourse(null)
+      toast({ title: "Course Updated", description: "Successfully updated." })
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update the course. Please try again.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Failed to update course.", variant: "destructive" })
     }
-  }
-
-  function handleReassignLecturer(id: string, arg1: string): void {
-    throw new Error("Function not implemented.")
   }
 
   return (
@@ -98,7 +71,7 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
               <TableHead>Name</TableHead>
               <TableHead>Department</TableHead>
               <TableHead>Lecturers</TableHead>
-              {(role === "hod" || role === "config" || role === "dp_academics") && <TableHead>Actions</TableHead>}
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -109,18 +82,38 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
                   <TableCell>{course.name}</TableCell>
                   <TableCell>{course.department.name}</TableCell>
                   <TableCell>{course.lecturers.map((lecturer) => lecturer?.username).join(", ") || "None"}</TableCell>
-                  {(role === "hod" || role === "config" || role === "dp_academics") && (
-                    <TableCell>
-                      {role === "hod" && (
-                        <Button onClick={() => handleReassignLecturer(course.id, "New Lecturer")}>
-                          Reassign
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="w-5 h-5" />
                         </Button>
-                      )}
-                      {(role === "config" || role === "dp_academics") && (
-                        <Button onClick={() => handleEditCourse(course)}>Edit</Button>
-                      )}
-                    </TableCell>
-                  )}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {role === "lecturer" && (
+                          <>
+                            <DropdownMenuItem onClick={() => router.push(`/dashboard/lecturer/attendance/${course.id}`)}>
+                           View Attendance
+                             </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => router.push(`/dashboard/lecturer/reports/${course.id}`)}>
+                                View Report
+                                </DropdownMenuItem>
+
+                          </>
+                        )}
+                        {role === "hod" && (
+                          <DropdownMenuItem onClick={() => alert("Reassign Lecturer not implemented")}>
+                            Reassign Lecturer
+                          </DropdownMenuItem>
+                        )}
+                        {(role === "config" || role === "dp_academics") && (
+                          <DropdownMenuItem onClick={() => handleEditCourse(course)}>
+                            Edit Course
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               ))
             ) : (
@@ -141,7 +134,7 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="grid w-full items-center gap-1.5">
+              <div className="grid w-full gap-1.5">
                 <Label htmlFor="courseCode">Course Code</Label>
                 <Input
                   id="courseCode"
@@ -154,7 +147,7 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
                   placeholder="e.g., CS101"
                 />
               </div>
-              <div className="grid w-full items-center gap-1.5">
+              <div className="grid w-full gap-1.5">
                 <Label htmlFor="courseName">Course Name</Label>
                 <Input
                   id="courseName"
@@ -164,10 +157,10 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
                       ? setEditingCourse({ ...editingCourse, name: e.target.value })
                       : setNewCourse({ ...newCourse, name: e.target.value })
                   }
-                  placeholder="e.g., Introduction to Computer Science"
+                  placeholder="e.g., Intro to Computer Science"
                 />
               </div>
-              <div className="grid w-full items-center gap-1.5">
+              <div className="grid w-full gap-1.5">
                 <Label htmlFor="department">Department</Label>
                 <Input
                   id="department"
@@ -196,4 +189,3 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
     </div>
   )
 }
-

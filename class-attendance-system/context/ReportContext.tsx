@@ -70,10 +70,25 @@ export const ReportsProvider = ({ children }: { children: ReactNode }) => {
     deleteItem: deleteTimetableAdherence,
   } = useApi<TimetableAdherence>(TIMETABLE_ADHERENCE_URL);
 
-  const fetchReportsWithFilters = () => {
-    fetchAttendanceReports(filters);
+  // const fetchReportsWithFilters = () => {
+  //   fetchAttendanceReports(filters);
+  // };
+  const fetchReportsWithFilters = async () => {
+    try {
+      console.log("Fetching with filters:", filters); // Debugging
+      const response = await fetchAttendanceReports(filters); // Ensure this correctly updates state
+      console.log("API Response:", response); // Debugging
+  
+      if (response?.results) {
+        setAttendanceReports(response.results); // Ensure only `results` is stored
+      } else {
+        setAttendanceReports([]); // Fallback
+      }
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+    }
   };
-
+  
   const fetchHistoryWithFilters = () => {
     fetchStudentAttendanceHistory(filters);
   };
