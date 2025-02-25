@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { TimetableAdherence } from "@/types/reports"
 import { formatDateTime } from "@/utils/date"
+import dayjs from "dayjs";
 
 export function TimetableReport() {
   const { timetableAdherence } = useReports()
@@ -50,7 +51,7 @@ export function TimetableReport() {
                 <TableRow key={adherence.id}>
                   <TableCell>{adherence.session.course?.name || "N/A"}</TableCell>
                   <TableCell>{adherence.session.timetable?.day_of_week || "N/A"}</TableCell>
-                  <TableCell>{formatDateTime(adherence.session.timetable?.start_time as string)}</TableCell>
+                  <TableCell>{dayjs(`1970-01-01 ${adherence.session.timetable?.start_time as string}`).format("h:mm A")}</TableCell>
                   <TableCell>{formatDateTime(adherence.session.start_time as string)}</TableCell>
                   <TableCell>
                     <Badge variant={badgeVariant}>{deviation} min</Badge>

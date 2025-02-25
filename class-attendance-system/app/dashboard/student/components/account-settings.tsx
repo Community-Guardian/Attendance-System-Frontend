@@ -107,8 +107,8 @@ export function AccountSettings() {
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:max-w-[600px]">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="devices">Devices</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
+          {/* <TabsTrigger value="devices">Devices</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
@@ -119,13 +119,13 @@ export function AccountSettings() {
           <SecuritySettings />
         </TabsContent>
 
-        <TabsContent value="devices" className="space-y-4">
+        {/* <TabsContent value="devices" className="space-y-4">
           <DeviceManagement />
         </TabsContent>
 
         <TabsContent value="activity" className="space-y-4">
           <ActivityLog />
-        </TabsContent>
+        </TabsContent> */}
       </Tabs>
     </div>
   )

@@ -137,54 +137,59 @@ export function Sidebar() {
       {/* Mobile Sidebar */}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" className="lg:hidden">
+          <Button variant="ghost" className="lg:hidden justify-end">
             <Menu className="h-6 w-6" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-64 bg-white dark:bg-gray-900">
-          <nav className="flex flex-col gap-2">
-            {currentRoutes.map((route) => (
-              <Link
-                key={route.href}
-                href={route.href}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-2 rounded-lg transition duration-300",
-                  pathname === route.href
-                    ? "bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-md"
-                    : "text-gray-700 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-800"
-                )}
-                onClick={() => setIsOpen(false)}
-              >
-                <route.icon className="h-5 w-5" />
-                {route.title}
-              </Link>
-            ))}
-                <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive">
-                    <LogOut className="mr-2 h-4 w-4" />
+        <SheetContent side="left" className="w-64 h-full bg-white dark:bg-gray-900 shadow-lg p-4 flex flex-col">
+          <ScrollArea className="flex-grow overflow-y-auto">
+            <nav className="flex flex-col gap-2">
+              {currentRoutes.map((route) => (
+                <Link
+                  key={route.href}
+                  href={route.href}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg transition duration-300",
+                    pathname === route.href
+                      ? "bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-md"
+                      : "text-gray-700 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-800"
+                  )}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <route.icon className="h-5 w-5" />
+                  {route.title}
+                </Link>
+              ))}
+            </nav>
+          </ScrollArea>
+          {/* Sign Out Button */}
+          <div className="mt-auto">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="w-full flex items-center justify-center py-3">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure you want to sign out?</AlertDialogTitle>
+                  <AlertDialogDescription>You will need to sign in again to access your account.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleLogout}
+                    disabled={loggingOut}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {loggingOut && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Sign Out
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure you want to sign out?</AlertDialogTitle>
-                    <AlertDialogDescription>You will need to sign in again to access your account.</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleLogout}
-                      disabled={loggingOut}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      {loggingOut && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Sign Out
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-          </nav>
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </SheetContent>
       </Sheet>
 
@@ -211,35 +216,38 @@ export function Sidebar() {
                   {route.title}
                 </Link>
               ))}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure you want to sign out?</AlertDialogTitle>
-                    <AlertDialogDescription>You will need to sign in again to access your account.</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleLogout}
-                      disabled={loggingOut}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      {loggingOut && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Sign Out
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </div>
           </div>
         </ScrollArea>
+        {/* Sign Out Button */}
+        <div className="p-4">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="w-full flex items-center justify-center py-3">
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure you want to sign out?</AlertDialogTitle>
+                <AlertDialogDescription>You will need to sign in again to access your account.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {loggingOut && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Sign Out
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </nav>
     </>
-  )
+  );
 }

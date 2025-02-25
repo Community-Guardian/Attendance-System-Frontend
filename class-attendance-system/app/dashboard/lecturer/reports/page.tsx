@@ -3,7 +3,9 @@
 import { useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useReports } from "@/context/ReportContext"
-
+import { useApi } from "@/hooks/customApi";
+import { StudentAttendanceResponse } from "@/types";
+import { ATTENDANCE_RECORD_URL } from "@/handler/customApiConfig";
 export default function LecturerReportsPage() {
   const {
     attendanceReports,
@@ -15,7 +17,10 @@ export default function LecturerReportsPage() {
   useEffect(() => {
     fetchAttendanceReports()
   }, [])
-
+  const { useFetchData } = useApi<StudentAttendanceResponse>(`${ATTENDANCE_RECORD_URL}student_attendance_per_course/`);
+  const { data: attendanceDataRecords, isLoading, isFetched } = useFetchData(1);
+  const highestAttendance = attendanceDataRecords?.courses.sort((a, b) => b.attendance_percentage - a.attendance_percentage)[0];
+  const lowestAttendance = attendanceDataRecords?.courses.sort((a, b) => a.attendance_percentage - b.attendance_percentage)[0];
   if (loading) return <div className="text-center text-blue-600 dark:text-blue-400 text-xl font-semibold">Loading Reports...</div>
   if (error) return <div className="text-center text-red-600 dark:text-red-400 text-lg font-semibold">Error: {error}</div>
 
@@ -26,10 +31,10 @@ export default function LecturerReportsPage() {
       {/* Summary Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {[
-          { title: "Average Attendance", value: "50%" },
-          { title: "Total Classes", value: "5" },
-          { title: "Highest Attendance Course", value: "50%", subtitle: "Human Computer Interaction" },
-          { title: "Lowest Attendance Course", value: "10%", subtitle: "Machine Learning" }
+          { title: "Average Attendance", value: `${attendanceDataRecords?.overall_attendance.attendance_percentage}%` },
+          { title: "Total Classes", value: `${attendanceDataRecords?.overall_attendance.total_sessions}` },
+          { title: "Highest Attendance Course", value: `${highestAttendance?.attendance_percentage}%`, subtitle: `${highestAttendance?.course_name}` },
+          { title: "Lowest Attendance Course", value: `${lowestAttendance?.attendance_percentage}%`, subtitle: `${lowestAttendance?.course_name}` },
         ].map((stat, index) => (
           <Card key={index} className="bg-white dark:bg-gray-800 shadow-md border border-gray-300 dark:border-gray-700">
             <CardHeader className="pb-2">

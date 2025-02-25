@@ -7,11 +7,21 @@ import { WeeklyTimetable } from "@/components/weekly-timetable"
 import { AttendanceSummary } from "@/components/attendance-summary"
 import { Notifications } from "@/components/notifications"
 import { useAuth } from "@/context/AuthContext"
+import { useAttendance } from "@/context/AttendanceContext"
 import FullPageLoader from "@/components/custom/FullPageLoader"
+import { useApi } from "@/hooks/customApi";
+import { StudentAttendanceResponse } from "@/types";
+import { ATTENDANCE_RECORD_URL } from "@/handler/customApiConfig";
 export default function StudentDashboardPage() {
   const { user,loading } = useAuth();
+  const { attendanceSessions } = useAttendance();
+  const { useFetchData } = useApi<StudentAttendanceResponse>(`${ATTENDANCE_RECORD_URL}student_attendance_per_course/`);
+  const { data: attendanceDataRecords, isLoading, isFetched } = useFetchData(1);
 
-  if (loading) {
+  const activeSessions = attendanceSessions.filter((session) => new Date(session.start_time) < new Date() && new Date(session.end_time) > new Date());
+  const upcomingSessions = attendanceSessions.filter((session) => new Date(session.start_time) > new Date());
+  const nextSession = upcomingSessions.length > 0 ? upcomingSessions[0] : null;
+  if (loading || isLoading || !isFetched ) {
     return <FullPageLoader message="Fetching your dashboard data..." />;
   }
   return (
@@ -25,8 +35,16 @@ export default function StudentDashboardPage() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2</div>
-            <AttendanceSign />
+            {activeSessions.length > 0 ? (
+              activeSessions.map((session) => (
+                <div key={session.id}>
+                  <div className="text-2xl font-bold">{session.course.name}</div>
+                  <AttendanceSign sessionId={session.id} />
+                </div>
+              ))
+            ) : (
+              <div className="text-gray-500 text-center">No active sessions</div>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -35,7 +53,7 @@ export default function StudentDashboardPage() {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">92%</div>
+            <div className="text-2xl font-bold">{attendanceDataRecords?.overall_attendance.attendance_percentage}%</div>
           </CardContent>
         </Card>
         <Card>
@@ -44,8 +62,12 @@ export default function StudentDashboardPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground">Next: Math 101 at 2:00 PM</p>
+            <div className="text-2xl font-bold">{upcomingSessions.length}</div>
+            {nextSession ?
+            (<p className="text-xs text-muted-foreground">Next: {nextSession.course.name},{nextSession?.start_time}</p>)
+            :
+            <p className="text-xs text-muted-foreground">No upcoming classes</p>
+            }
           </CardContent>
         </Card>
         <Card>
@@ -86,7 +108,7 @@ export default function StudentDashboardPage() {
           <CardTitle>Announcements & Notifications</CardTitle>
         </CardHeader>
         <CardContent>
-          <Notifications />
+          <Notifications attendanceData={attendanceDataRecords as StudentAttendanceResponse} />
         </CardContent>
       </Card>
     </div>

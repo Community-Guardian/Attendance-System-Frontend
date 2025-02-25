@@ -1,38 +1,44 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { StudentAttendanceResponse } from "@/types";
 
-const courses = [
-  { id: 1, name: "Mathematics 101", students: 30, averageAttendance: 92 },
-  { id: 2, name: "Physics 202", students: 25, averageAttendance: 88 },
-  { id: 3, name: "Chemistry 301", students: 20, averageAttendance: 95 },
-  { id: 4, name: "Biology 401", students: 22, averageAttendance: 90 },
-  { id: 5, name: "Computer Science 501", students: 28, averageAttendance: 93 },
-]
-
-export function CourseOverview() {
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Course</TableHead>
-          <TableHead>Students</TableHead>
-          <TableHead>Avg. Attendance</TableHead>
-          <TableHead>Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {courses.map((course) => (
-          <TableRow key={course.id}>
-            <TableCell>{course.name}</TableCell>
-            <TableCell>{course.students}</TableCell>
-            <TableCell>{course.averageAttendance}%</TableCell>
-            <TableCell>
-              <Button size="sm">View Details</Button>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  )
+interface CourseOverviewProps {
+  attendanceData?: StudentAttendanceResponse; // Make it optional to handle missing props
 }
 
+export function CourseOverview({ attendanceData }: CourseOverviewProps) {
+  const courses = attendanceData?.courses ?? []; // Default to an empty array if undefined
+
+  return (
+    <div className="overflow-x-auto rounded-lg border">
+      <Table className="min-w-full">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="text-left text-sm font-semibold">Course</TableHead>
+            <TableHead className="text-center text-sm font-semibold">Avg. Attendance</TableHead>
+            <TableHead className="text-right text-sm font-semibold">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {courses.length > 0 ? (
+            courses.map((course) => (
+              <TableRow key={course.course_id} className="hover:bg-muted">
+                <TableCell className="py-2 text-left">{course.course_name}</TableCell>
+                <TableCell className="py-2 text-center">{course.attendance_percentage}%</TableCell>
+                <TableCell className="py-2 text-right">
+                  <Button size="sm" className="text-xs">View Details</Button>
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={3} className="py-4 text-center text-sm text-muted-foreground">
+                No courses available
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}

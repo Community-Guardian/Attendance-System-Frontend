@@ -17,3 +17,29 @@ export interface User {
   first_name: string;
   last_name: string;
 }
+export interface DjangoPaginatedResponse<T> {
+  
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+export type StudentAttendancePerCourse = {
+  course_id: string;
+  course_name: string;
+  attended_sessions: number;
+  total_sessions: number;
+  attendance_percentage: number;
+};
+
+export type OverallAttendance = {
+  attended_sessions: number;
+  total_sessions: number;
+  attendance_percentage: number;
+};
+
+export type StudentAttendanceResponse = {
+  courses: StudentAttendancePerCourse[];
+  overall_attendance: OverallAttendance;
+};
+

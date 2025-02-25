@@ -3,7 +3,7 @@ import type React from "react"
 import { Sidebar } from "@/components/ui/sidebar"
 import Cookies from "js-cookie"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect,useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 
 // Call all providers
@@ -16,6 +16,7 @@ import { ReportsProvider } from "@/context/ReportContext"
 import { TimetableProvider } from "@/context/TimetableContext"
 import { useAuth } from "@/context/AuthContext"
 import FullPageLoader from "@/components/custom/FullPageLoader"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 export default function DashboardLayout({
   children,
@@ -27,6 +28,7 @@ export default function DashboardLayout({
   const router = useRouter()
   const { toast } = useToast()
   const { loading } = useAuth()
+  const [queryClient] = useState(() => new QueryClient());
 
   useEffect(() => {
     // Show toast only if no token and not loading
@@ -60,7 +62,9 @@ export default function DashboardLayout({
                 <GeolocationProvider>
                   <ReportsProvider>
                     <TimetableProvider>
-                      {children}
+                      <QueryClientProvider client={queryClient}>
+                        {children}
+                      </QueryClientProvider>
                     </TimetableProvider>
                   </ReportsProvider>
                 </GeolocationProvider>

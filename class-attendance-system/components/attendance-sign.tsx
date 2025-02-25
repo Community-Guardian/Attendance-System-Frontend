@@ -3,8 +3,11 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
+interface AttendanceSignProps {
+  sessionId: string
+}
 
-export function AttendanceSign() {
+export function  AttendanceSign({ sessionId }: AttendanceSignProps) {
   const [location, setLocation] = useState<GeolocationCoordinates | null>(null)
   const [sessionOpen, setSessionOpen] = useState(false)
   const [geolocationAvailable, setGeolocationAvailable] = useState(true)
