@@ -16,7 +16,6 @@ export function CourseOverview({ attendanceData }: CourseOverviewProps) {
           <TableRow>
             <TableHead className="text-left text-sm font-semibold">Course</TableHead>
             <TableHead className="text-center text-sm font-semibold">Avg. Attendance</TableHead>
-            <TableHead className="text-right text-sm font-semibold">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -25,9 +24,6 @@ export function CourseOverview({ attendanceData }: CourseOverviewProps) {
               <TableRow key={course.course_id} className="hover:bg-muted">
                 <TableCell className="py-2 text-left">{course.course_name}</TableCell>
                 <TableCell className="py-2 text-center">{course.attendance_percentage}%</TableCell>
-                <TableCell className="py-2 text-right">
-                  <Button size="sm" className="text-xs">View Details</Button>
-                </TableCell>
               </TableRow>
             ))
           ) : (
