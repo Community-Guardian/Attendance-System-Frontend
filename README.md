@@ -25,7 +25,7 @@ This is the frontend application for the Class Attendance System. It is built us
 1. Clone the repository:
 
     ```sh
-    git clone https://github.com/your-username/Attendance-System-Frontend.git
+    git clone https://github.com/Community-Guardian/Attendance-System-Frontend.git
     ```
 
 2. Navigate to the project directory:
