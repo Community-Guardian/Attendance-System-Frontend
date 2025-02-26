@@ -1,67 +1,91 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "@/components/ui/use-toast";
-import { Switch } from "@/components/ui/switch";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
 import { useAttendance } from "@/context/AttendanceContext";
 import { useCourses } from "@/context/CoursesContext";
 import { useUser } from "@/context/userContext";
 import { useTimetable } from "@/context/TimetableContext";
 import { useGeolocation } from "@/context/GeoLocationContext";
+import { create } from "zustand";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+
+// ✅ Define Zod Schema for validation
+const attendanceSchema = z.object({
+  courseId: z.string().min(1, "Course is required"),
+  timetableId: z.string().min(1, "Timetable is required"),
+  geolocationZone: z.string().min(1, "Geolocation zone is required"),
+  endTime: z.string().min(1, "End time is required"),
+  isMakeupClass: z.boolean(),
+  lecturerId: z.string().optional(),
+});
+
+// ✅ Zustand Store for state management
+interface AttendanceStore {
+  sessionActive: boolean;
+  setSessionActive: (status: boolean) => void;
+}
+
+const useAttendanceStore = create<AttendanceStore>((set) => ({
+  sessionActive: false,
+  setSessionActive: (status: boolean) => set({ sessionActive: status }),
+}));
 
 export function StartAttendanceSession() {
   const { createAttendanceSession } = useAttendance();
   const { courses, fetchCourses } = useCourses();
-  const { user, loading: userLoading, fetchUser } = useUser();
+  const { user, fetchUser } = useUser();
   const { timetables, fetchTimetables } = useTimetable();
   const { geolocationZones, fetchGeolocationZones } = useGeolocation();
-
-  const [courseId, setCourseId] = useState("");
-  const [lecturerId, setLecturerId] = useState("");
-  const [timetableId, setTimetableId] = useState("");
-  const [geolocationZone, setGeolocationZone] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [isMakeupClass, setIsMakeupClass] = useState(false);
-  const [sessionActive, setSessionActive] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { sessionActive, setSessionActive } = useAttendanceStore();
+  const { toast } = useToast();
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(attendanceSchema),
+    defaultValues: {
+      courseId: "",
+      timetableId: "",
+      geolocationZone: "",
+      isMakeupClass: false,
+      lecturerId: "",
+      endTime: "",
+    },
+  });
 
   useEffect(() => {
     const loadData = async () => {
-      // Check if data is already fetched to avoid unnecessary requests
-      if (!courses.length) await fetchCourses();
-      if (!user) await fetchUser();
-      if (!timetables.length) await fetchTimetables();
-      if (!geolocationZones.length) await fetchGeolocationZones();
-
-      setLoading(false);
+      await Promise.all([fetchCourses(), fetchUser(), fetchTimetables(), fetchGeolocationZones()]);
     };
     loadData();
-  }, [courses, user, timetables, geolocationZones, fetchCourses, fetchUser, fetchTimetables, fetchGeolocationZones]);
+  }, []);
 
   useEffect(() => {
-    if (user && user.role === "lecturer") {
-      setLecturerId(user.id || "");
+    if (user?.role === "lecturer") {
+      setValue("lecturerId", user.id);
     }
-  }, [user]);
+  }, [user, setValue]);
 
-  const handleStartSession = async () => {
-    if (!courseId || !lecturerId || !timetableId || !geolocationZone || !endTime) {
-      toast({
-        title: "Missing Information",
-        description: "All fields are required to start an attendance session.",
-        variant: "destructive",
-      });
+  const onSubmit = async (data: any) => {
+    if (!user?.id) {
+      toast({ title: "Error", description: "User not found", variant: "destructive" });
       return;
     }
 
-    const isWithinTimetable = checkTimetable(timetableId);
-    if (!isWithinTimetable && !isMakeupClass) {
+    if (!checkTimetable(data.timetableId) && !data.isMakeupClass) {
       toast({
         title: "Invalid Session Time",
-        description: "This session is not within the scheduled timetable. Mark as a make-up class if needed.",
+        description: "Session not within schedule. Mark as a make-up class if needed.",
         variant: "destructive",
       });
       return;
@@ -69,23 +93,22 @@ export function StartAttendanceSession() {
 
     try {
       const newSession = {
-        timetable_id: timetableId,
-        lecturer_id: lecturerId,
-        course_id: courseId,
+        timetable_id: data.timetableId,
+        lecturer_id: user.id,
+        course_id: data.courseId,
         start_time: new Date().toISOString(),
-        end_time: new Date(endTime).toISOString(),
-        is_makeup_class: isMakeupClass,
-        geolocation_zone_id: geolocationZone,
+        end_time: new Date(data.endTime).toISOString(),
+        is_makeup_class: data.isMakeupClass,
+        geolocation_zone_id: data.geolocationZone,
       };
 
       console.log("🚀 Sending Payload:", newSession);
-
       await createAttendanceSession(newSession);
-
       setSessionActive(true);
+
       toast({
         title: "Attendance Session Started",
-        description: `Session started for course ${courseId} until ${endTime}.`,
+        description: `Session started for course ${data.courseId} until ${data.endTime}.`,
       });
     } catch (error: any) {
       console.error("❌ Error Response:", error.response?.data || error.message);
@@ -97,21 +120,11 @@ export function StartAttendanceSession() {
     }
   };
 
-  if (loading || userLoading) {
-    return <p>Loading...</p>;
-  }
-
   return (
-    <div className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid w-full max-w-sm items-center gap-1.5">
         <Label htmlFor="courseId">Course</Label>
-        <select
-          id="courseId"
-          value={courseId}
-          onChange={(e) => setCourseId(e.target.value)}
-          disabled={sessionActive}
-          className="border rounded-md p-2"
-        >
+        <select {...register("courseId")} disabled={sessionActive} className="border rounded-md p-2">
           <option value="">Select a course</option>
           {courses.map((course) => (
             <option key={course.id} value={course.id}>
@@ -119,22 +132,12 @@ export function StartAttendanceSession() {
             </option>
           ))}
         </select>
-      </div>
-
-      <div className="grid w-full max-w-sm items-center gap-1.5">
-        <Label htmlFor="lecturerId">Lecturer ID</Label>
-        <Input type="text" id="lecturerId" value={lecturerId} disabled />
+        {errors.courseId && <p className="text-red-500">{errors.courseId.message}</p>}
       </div>
 
       <div className="grid w-full max-w-sm items-center gap-1.5">
         <Label htmlFor="timetableId">Timetable</Label>
-        <select
-          id="timetableId"
-          value={timetableId}
-          onChange={(e) => setTimetableId(e.target.value)}
-          disabled={sessionActive}
-          className="border rounded-md p-2"
-        >
+        <select {...register("timetableId")} disabled={sessionActive} className="border rounded-md p-2">
           <option value="">Select a timetable</option>
           {timetables.map((timetable) => (
             <option key={timetable.id} value={timetable.id}>
@@ -142,17 +145,12 @@ export function StartAttendanceSession() {
             </option>
           ))}
         </select>
+        {errors.timetableId && <p className="text-red-500">{errors.timetableId.message}</p>}
       </div>
 
       <div className="grid w-full max-w-sm items-center gap-1.5">
         <Label htmlFor="geolocationZone">Geolocation Zone</Label>
-        <select
-          id="geolocationZone"
-          value={geolocationZone}
-          onChange={(e) => setGeolocationZone(e.target.value)}
-          disabled={sessionActive}
-          className="border rounded-md p-2"
-        >
+        <select {...register("geolocationZone")} disabled={sessionActive} className="border rounded-md p-2">
           <option value="">Select a geolocation zone</option>
           {geolocationZones.map((zone) => (
             <option key={zone.id} value={zone.id}>
@@ -160,28 +158,24 @@ export function StartAttendanceSession() {
             </option>
           ))}
         </select>
+        {errors.geolocationZone && <p className="text-red-500">{errors.geolocationZone.message}</p>}
       </div>
 
       <div className="grid w-full max-w-sm items-center gap-1.5">
         <Label htmlFor="endTime">End Time</Label>
-        <Input
-          type="datetime-local"
-          id="endTime"
-          value={endTime}
-          onChange={(e) => setEndTime(e.target.value)}
-          disabled={sessionActive}
-        />
+        <Input type="datetime-local" {...register("endTime")} disabled={sessionActive} />
+        {errors.endTime && <p className="text-red-500">{errors.endTime.message}</p>}
       </div>
 
       <div className="flex items-center space-x-2">
-        <Switch id="makeup-class" checked={isMakeupClass} onCheckedChange={setIsMakeupClass} disabled={sessionActive} />
-        <Label htmlFor="makeup-class">Mark as make-up class</Label>
+        <Switch {...register("isMakeupClass")} disabled={sessionActive} />
+        <Label htmlFor="isMakeupClass">Mark as make-up class</Label>
       </div>
 
-      <Button onClick={handleStartSession} disabled={sessionActive}>
+      <Button type="submit" disabled={sessionActive} >
         Start Attendance Session
       </Button>
-    </div>
+    </form>
   );
 }
 
