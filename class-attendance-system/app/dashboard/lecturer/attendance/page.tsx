@@ -19,10 +19,6 @@ export default function LecturerAttendancePage() {
           <h2 className="text-xl font-semibold mb-4">Start/Close Session</h2>
           <StartAttendanceSession />
         </div>
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Manual Attendance Sign</h2>
-          <ManualAttendanceSign />
-        </div>
       </div>
       <AttendanceList />
     </div>

@@ -15,12 +15,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { format } from "date-fns";
 
 // ✅ Define Zod Schema for validation
 const attendanceSchema = z.object({
   courseId: z.string().min(1, "Course is required"),
   timetableId: z.string().min(1, "Timetable is required"),
   geolocationZone: z.string().min(1, "Geolocation zone is required"),
+  startTime: z.string().min(1, "Start time is required"),
   endTime: z.string().min(1, "End time is required"),
   isMakeupClass: z.boolean(),
   lecturerId: z.string().optional(),
@@ -59,6 +61,7 @@ export function StartAttendanceSession() {
       geolocationZone: "",
       isMakeupClass: false,
       lecturerId: "",
+      startTime: "",
       endTime: "",
     },
   });
@@ -96,7 +99,7 @@ export function StartAttendanceSession() {
         timetable_id: data.timetableId,
         lecturer_id: user.id,
         course_id: data.courseId,
-        start_time: new Date().toISOString(),
+        start_time: new Date(data.startTime).toISOString(),
         end_time: new Date(data.endTime).toISOString(),
         is_makeup_class: data.isMakeupClass,
         geolocation_zone_id: data.geolocationZone,
@@ -107,8 +110,8 @@ export function StartAttendanceSession() {
       setSessionActive(true);
 
       toast({
-        title: "Attendance Session Started",
-        description: `Session started for course ${data.courseId} until ${data.endTime}.`,
+        title: "Session Created",
+        description: `Session Created for course ${courses.find((c) => c.id === data.courseId)?.code} at ${format(new Date(data.startTime), "dd MMM yyyy, hh:mm a")}.`,
       });
     } catch (error: any) {
       console.error("❌ Error Response:", error.response?.data || error.message);
@@ -162,11 +165,15 @@ export function StartAttendanceSession() {
       </div>
 
       <div className="grid w-full max-w-sm items-center gap-1.5">
+        <Label htmlFor="startTime">Start Time</Label>
+        <Input type="datetime-local" {...register("startTime")} disabled={sessionActive} />
+        {errors.startTime && <p className="text-red-500">{errors.startTime.message}</p>}
+      </div>
+      <div className="grid w-full max-w-sm items-center gap-1.5">
         <Label htmlFor="endTime">End Time</Label>
         <Input type="datetime-local" {...register("endTime")} disabled={sessionActive} />
         {errors.endTime && <p className="text-red-500">{errors.endTime.message}</p>}
       </div>
-
       <div className="flex items-center space-x-2">
         <Switch {...register("isMakeupClass")} disabled={sessionActive} />
         <Label htmlFor="isMakeupClass">Mark as make-up class</Label>

@@ -3,17 +3,17 @@
 import { Activity, Book, Calendar, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StartAttendanceSession } from "@/components/start-attendance-session";
 import { WeeklyTimetable } from "@/components/weekly-timetable";
 import { CourseOverview } from "@/components/course-overview";
-import { Notifications } from "@/components/notifications";
 import { useUser } from "@/context/userContext";
-import { useApi } from "@/hooks/customApi";
 import { StudentAttendanceResponse } from "@/types";
-import { ATTENDANCE_RECORD_URL } from "@/handler/customApiConfig";
+import { ATTENDANCE_SESSION_URL as ATTENDANCE_URL } from "@/handler/customApiConfig";
 import { useTimetable } from "@/context/TimetableContext";
 import { useReports } from "@/context/ReportContext";
 import { useRouter } from "next/navigation";
+import { useApi } from "@/hooks/customApi";
+import { ATTENDANCE_SESSION_URL } from "@/handler/customApiConfig";
+import { toast } from "sonner";
 const getFullDateTime = (time: string, dayOfWeek: string) => {
   const today = new Date();
   const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -33,7 +33,7 @@ const getFullDateTime = (time: string, dayOfWeek: string) => {
 
 export default function LecturerDashboardPage() {
   const { user, loading } = useUser();
-  const { useFetchData } = useApi<StudentAttendanceResponse>(`${ATTENDANCE_RECORD_URL}student_attendance_per_course/`);
+  const { useFetchData } = useApi<StudentAttendanceResponse>(`${ATTENDANCE_URL}student_attendance_per_course/`);
   const { data: attendanceDataRecords, isLoading, isFetched } = useFetchData(1);
   const { timetables } = useTimetable();
   const { attendanceReports } = useReports();
@@ -57,7 +57,18 @@ export default function LecturerDashboardPage() {
     .sort((a, b) => a.startDateTime.getTime() - b.startDateTime.getTime());
 
   const nextClass = upcomingClasses.length > 0 ? upcomingClasses[0] : null;
+  async function handleEndSession( sessionId:string ) {
+    const {useAddItem:close_session} = useApi(`${ATTENDANCE_SESSION_URL}${sessionId}/close_session/`);
+    try {
+    await close_session.mutate({});
+    router.refresh();      
+    toast.success("Session ended successfully");
+    } catch (error) {
+      toast.error("Error Ending Session");
+    }
 
+
+  }
   return (
     <div className="space-y-6">
       <h2 className="text-3xl font-bold tracking-tight">
@@ -72,11 +83,13 @@ export default function LecturerDashboardPage() {
           </CardHeader>
           <CardContent>
             {currentClass ? (
-              <div className="text-2xl font-bold">{currentClass.course.name}</div>
+              <div>
+                <div className="text-2xl font-bold">{currentClass.course.name}</div>
+                <Button onClick={() => handleEndSession(currentClass.id)} >End Session</Button>
+              </div>          
             ) : (
               <div className="text-gray-500 text-center">No active class</div>
             )}
-            {/* <StartAttendanceSessionById /> */}
           </CardContent>
         </Card>
         <Card>
@@ -137,14 +150,6 @@ export default function LecturerDashboardPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Announcements & Notifications</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* <Notifications /> */}
-        </CardContent>
-      </Card>
     </div>
   );
 }

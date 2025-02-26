@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast"
 
 // Call all providers
 import { AttendanceProvider } from "@/context/AttendanceContext"
-import { BorrowAccountsProvider } from "@/context/BorrowAccountsContext"
+// import { BorrowAccountsProvider } from "@/context/BorrowAccountsContext"
 import { ConfigProvider } from "@/context/ConfigContext"
 import { CoursesProvider } from "@/context/CoursesContext"
 import { GeolocationProvider } from "@/context/GeoLocationContext"
@@ -56,7 +56,7 @@ export default function DashboardLayout({
       <Sidebar />
       <main className="flex-1 overflow-y-auto p-4 lg:p-8">
         <AttendanceProvider>
-          <BorrowAccountsProvider>
+          {/* <BorrowAccountsProvider> */}
             <ConfigProvider>
               <CoursesProvider>
                 <GeolocationProvider>
@@ -70,7 +70,7 @@ export default function DashboardLayout({
                 </GeolocationProvider>
               </CoursesProvider>
             </ConfigProvider>
-          </BorrowAccountsProvider>
+          {/* </BorrowAccountsProvider> */}
         </AttendanceProvider>
       </main>
     </div>
