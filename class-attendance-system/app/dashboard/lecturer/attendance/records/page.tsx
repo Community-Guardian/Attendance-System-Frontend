@@ -1,58 +1,31 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useParams } from "next/navigation"
+import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { toast } from "@/components/ui/use-toast"
-import { useAttendance } from "@/context/AttendanceContext"
+import { useToast } from "@/hooks/use-toast"
 import { AttendanceRecord } from "@/types/attendance"
+import { useApi } from "@/hooks/customApi"
+import { ATTENDANCE_RECORD_URL } from "@/handler/customApiConfig"
+import { DjangoPaginatedResponse } from "@/types"
+import { format } from "date-fns"
+import { useSearchParams } from "next/navigation"
 
-export default function CourseAttendancePage() {
-  const { courseId } = useParams()
-  const { fetchAttendanceRecords, updateAttendanceRecord, attendanceRecords, loading, error } = useAttendance()
+export default function AttendanceRecordsPage() {
+  const searchParams = useSearchParams()
+  const sessionId = searchParams.get("session_id")
+  const { useFetchData } = useApi<DjangoPaginatedResponse<AttendanceRecord>>(ATTENDANCE_RECORD_URL)
+  const {  useUpdateItem } = useApi<AttendanceRecord>(ATTENDANCE_RECORD_URL)
+  const { data:attendanceRecords, isLoading, isFetched, error } = useFetchData(1, { session_id: sessionId || "" })
+  const { toast } = useToast()
   const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>([])
   const [courseName, setCourseName] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (courseId) {
-      const singleCourseId = Array.isArray(courseId) ? courseId[0] : courseId
-
-      const fetchData = async () => {
-        try {
-          await fetchAttendanceRecords({ course_id: singleCourseId })
-        } catch {
-          toast({ title: "Error", description: "Failed to fetch attendance.", variant: "destructive" })
-        }
-      }
-
-      fetchData()
-    }
-  }, [courseId])
-
-  useEffect(() => {
-    if (attendanceRecords.length > 0) {
-      const singleCourseId = Array.isArray(courseId) ? courseId[0] : courseId
-
-      const filtered = attendanceRecords.filter(
-        (record) => record.session.course?.id === singleCourseId
-      )
-
-      setFilteredRecords(filtered)
-
-      // Set Course Name from First Record
-      if (filtered.length > 0 && filtered[0].session.course?.name) {
-        setCourseName(filtered[0].session.course.name)
-      }
-    }
-  }, [attendanceRecords, courseId])
-
   // Handle signing attendance
   const handleSignAttendance = async (recordId: string) => {
     try {
-      await updateAttendanceRecord(recordId, { signed_by_lecturer: true })
-      toast({ title: "Success", description: "Attendance marked as signed.", variant: "success" })
+      await useUpdateItem.mutateAsync({ id: recordId, item: { signed_by_lecturer: true  }});
+      toast({ title: "Success", description: "Attendance marked as signed.", variant: "default" })
     } catch {
       toast({ title: "Error", description: "Failed to sign attendance.", variant: "destructive" })
     }
@@ -60,15 +33,15 @@ export default function CourseAttendancePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">
-        Attendance for {courseName ? `Course: ${courseName}` : `Course ID: ${courseId}`}
-      </h1>
-
-      {loading ? (
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold">Attendance Records</h2>
+      </div>
+      {isLoading && !isFetched ? (
         <p>Loading attendance...</p>
       ) : error ? (
         <p className="text-red-500">Error loading attendance records.</p>
-      ) : filteredRecords.length > 0 ? (
+      ) : attendanceRecords && attendanceRecords?.results.length > 0 ? (
+
         <Table>
           <TableHeader>
             <TableRow>
@@ -79,10 +52,10 @@ export default function CourseAttendancePage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredRecords.map((record) => (
+            {attendanceRecords?.results.map((record:AttendanceRecord) => (
               <TableRow key={record.id}>
-                <TableCell>{record.student?.name ?? ""}</TableCell>
-                <TableCell>{new Date(record.timestamp).toLocaleString()}</TableCell>
+                <TableCell>{record.student?.email ?? ""}</TableCell>
+                <TableCell>{format(new Date(record.timestamp), "yyyy-MM-dd")}</TableCell>
                 <TableCell>
                   <Checkbox
                     checked={record.signed_by_lecturer}

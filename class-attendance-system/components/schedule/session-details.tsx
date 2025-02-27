@@ -48,10 +48,9 @@ export function SessionDetails({ sessionId, onClose }: SessionDetailsProps) {
             )}
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="default" onClick={onClose}>
               Close
             </Button>
-            <Button>Sign Attendance</Button>
           </div>
         </div>
       </DialogContent>

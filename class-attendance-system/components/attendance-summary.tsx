@@ -1,10 +1,10 @@
 import { Progress } from "@/components/ui/progress"
 import { useApi } from "@/hooks/customApi";
 import { StudentAttendanceResponse } from "@/types";
-import { ATTENDANCE_RECORD_URL } from "@/handler/customApiConfig";
+import { ATTENDANCE_SESSION_URL } from "@/handler/customApiConfig";
 
 export function AttendanceSummary() {
-  const { useFetchData } = useApi<StudentAttendanceResponse>(`${ATTENDANCE_RECORD_URL}student_attendance_per_course/`);
+  const { useFetchData } = useApi<StudentAttendanceResponse>(`${ATTENDANCE_SESSION_URL}student_attendance_per_course/`);
   const { data: attendancePerCourseRecords, isLoading, isFetched } = useFetchData(1);
 
   if (isLoading || !isFetched || !attendancePerCourseRecords || attendancePerCourseRecords.courses.length === 0) {
