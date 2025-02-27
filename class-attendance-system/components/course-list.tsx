@@ -92,12 +92,9 @@ export function CourseList({ role }: { role: "student" | "lecturer" | "hod" | "d
                       <DropdownMenuContent align="end">
                         {role === "lecturer" && (
                           <>
-                            <DropdownMenuItem onClick={() => router.push(`/dashboard/lecturer/attendance/${course.id}`)}>
-                           View Attendance
-                             </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => router.push(`/dashboard/lecturer/reports/${course.id}`)}>
-                                View Report
-                                </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/dashboard/lecturer/attendance/classes/?course_id=${course.id}`)}>
+                              View Lectures
+                            </DropdownMenuItem>
 
                           </>
                         )}

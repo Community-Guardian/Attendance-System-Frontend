@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import { AttendanceList } from "@/components/attendance-list"
 import { StartAttendanceSession } from "@/components/start-attendance-session"
 import { ManualAttendanceSign } from "@/components/manual-attendance-sign"
 
@@ -20,7 +19,6 @@ export default function LecturerAttendancePage() {
           <StartAttendanceSession />
         </div>
       </div>
-      <AttendanceList />
     </div>
   )
 }
