@@ -40,6 +40,7 @@ export function UserAuthForm({ className, ...props }: React.HTMLAttributes<HTMLD
 
       toast({ title: "Login successful!", description: "Redirecting..." });
     } catch (error) {
+      console.log(error)
       toast({
         title: "Login failed",
         description: "Invalid credentials. Please try again.",
@@ -67,7 +68,7 @@ export function UserAuthForm({ className, ...props }: React.HTMLAttributes<HTMLD
           router.push("/dashboard/dp_academics");
           break;
         case "config_user":
-          router.push("/dashboard/config_user");
+          router.push("/dashboard/config");
           break;
         default:
           router.push("/dashboard/student"); // Default dashboard

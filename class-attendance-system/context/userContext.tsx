@@ -27,9 +27,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [data]);
 
-  const fetchUser = () => {
-    fetchData();
+  const fetchUser = async () => {
+    const users = await fetchData(); // Fetch all users
   };
+  
 
   const fetchUserById = async (id: string) => {
     const user = await fetchById(id);

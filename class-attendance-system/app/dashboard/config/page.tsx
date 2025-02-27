@@ -2,9 +2,9 @@ import type { Metadata } from "next"
 import { Users, Settings, Map, BarChart } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-// import { UserManagement } from "@/components/user-management"
-// import { GeolocationSettings } from "@/components/geolocation-settings"
-// import { SystemConfiguration } from "@/components/system-configuration"
+import { UserManagement } from "@/components/user-management"
+import { GeolocationSettings } from "@/components/geolocation-settings"
+import { SystemConfiguration } from "@/components/systemConfiguration"
 
 export const metadata: Metadata = {
   title: "Config User Dashboard",
@@ -23,7 +23,7 @@ export default function ConfigDashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,234</div>
+            <div className="text-2xl font-bold">34</div>
           </CardContent>
         </Card>
         <Card>
@@ -32,7 +32,7 @@ export default function ConfigDashboardPage() {
             <Map className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">15</div>
+            <div className="text-2xl font-bold">3</div>
           </CardContent>
         </Card>
         <Card>
@@ -50,7 +50,7 @@ export default function ConfigDashboardPage() {
             <BarChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">10,000+</div>
+            <div className="text-2xl font-bold">10+</div>
             <Button size="sm" className="mt-2">
               View Logs
             </Button>
@@ -58,7 +58,7 @@ export default function ConfigDashboardPage() {
         </Card>
       </div>
 
-      {/* <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
             <CardTitle>User Management</CardTitle>
@@ -84,7 +84,7 @@ export default function ConfigDashboardPage() {
         <CardContent>
           <SystemConfiguration />
         </CardContent>
-      </Card> */}
+      </Card> 
     </div>
   )
 }
