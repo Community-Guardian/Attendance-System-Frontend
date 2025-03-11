@@ -16,7 +16,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-
+import { userRole } from "@/types"
+import Cookies from "js-cookie"
 type NavItem = {
   title: string
   href: string
@@ -80,35 +81,23 @@ const roleNavItems: RoleNavItems = {
     { title: "Profile", href: "/dashboard/config/profile", icon: User },
   ],
 }
-
-export function DashboardSidebar() {
+interface DashboardSidebarProps {
+  userRole: userRole
+}
+export function DashboardSidebar( {userRole }: DashboardSidebarProps ) {
   const pathname = usePathname()
-  const [userRole, setUserRole] = useState<string>("student")
-
-  useEffect(() => {
-    // Get user role from localStorage or API
-    const getUserRole = () => {
-      // This is a placeholder. In a real app, you'd get this from your auth state
-      // For now, we'll determine the role from the URL
-      if (pathname.includes("/dashboard/student")) return "student"
-      if (pathname.includes("/dashboard/lecturer")) return "lecturer"
-      if (pathname.includes("/dashboard/hod")) return "hod"
-      if (pathname.includes("/dashboard/dean")) return "dean"
-      if (pathname.includes("/dashboard/config")) return "config_user"
-      if (pathname.includes("/dashboard/admin")) return "admin"
-      return "student" // Default
-    }
-
-    setUserRole(getUserRole())
-  }, [pathname])
+ 
+  if (!userRole.includes(userRole)) {
+    throw new Error(`Invalid role: ${userRole}`);
+  }
 
   const navItems = roleNavItems[userRole] || roleNavItems.student
 
   const handleLogout = async () => {
     // Clear tokens and redirect to login
-    localStorage.removeItem("accessToken")
-    localStorage.removeItem("refreshToken")
-    window.location.href = "/auth/login"
+    Cookies.remove("accessToken")
+    Cookies.remove("refreshToken")
+    window.location.href = "/login"
   }
 
   return (

@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
                 We've sent a password reset link to your email address. Please check your inbox.
               </p>
               <Button asChild variant="outline" className="mt-4">
-                <Link href="/auth/login">Back to login</Link>
+                <Link href="/login">Back to login</Link>
               </Button>
             </div>
           ) : (
@@ -111,7 +111,7 @@ export default function ForgotPasswordPage() {
           )}
         </CardContent>
         <CardFooter className="flex justify-center">
-          <Link href="/auth/login" className="text-sm font-medium text-primary hover:text-primary/90">
+          <Link href="/login" className="text-sm font-medium text-primary hover:text-primary/90">
             Back to login
           </Link>
         </CardFooter>

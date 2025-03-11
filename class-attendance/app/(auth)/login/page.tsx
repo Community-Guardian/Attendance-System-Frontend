@@ -13,9 +13,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import Link from "next/link"
 
+import authManager from "@/handler/AuthManager"
+import { DjangoPaginatedResponse } from "@/types"
+import { User } from "@/types"
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
@@ -25,7 +28,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  const { toast } = useToast()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -39,26 +41,11 @@ export default function LoginPage() {
     setIsLoading(true)
     try {
       // Call the API route that uses dummy data
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(values),
-      })
+      await authManager.login(values.email ,values.password)
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || "Login failed")
-      }
-
-      // Store tokens in localStorage
-      localStorage.setItem("accessToken", data.access)
-      localStorage.setItem("refreshToken", data.refresh)
-
+      const user:DjangoPaginatedResponse<User> = await authManager.getUser()
       // Redirect based on user role
-      const userRole = data.user.role
+      const userRole = user.results[0].role
       switch (userRole) {
         case "student":
           router.push("/dashboard/student")
@@ -82,16 +69,13 @@ export default function LoginPage() {
           router.push("/dashboard")
       }
 
-      toast({
-        title: "Login successful",
-        description: "Welcome back!",
-      })
-    } catch (error) {
-      toast({
-        title: "Login failed",
-        description: error instanceof Error ? error.message : "Something went wrong",
-        variant: "destructive",
-      })
+      toast.message("Login successful",
+        {description: "Welcome back!"},
+      )
+    } catch (error:any) {
+      toast.message( "Login failed",
+      {description: error instanceof Error ? error.message : error.non_field_errors[0]||"Something went wrong",} 
+      )
     } finally {
       setIsLoading(false)
     }
@@ -160,12 +144,12 @@ export default function LoginPage() {
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
           <div className="text-sm text-center">
-            <Link href="/auth/forgot-password" className="font-medium text-primary hover:text-primary/90">
+            <Link href="/forgot-password" className="font-medium text-primary hover:text-primary/90">
               Forgot your password?
             </Link>
           </div>
           <div className="text-sm text-center">
-            <Link href="/auth/verify-email" className="font-medium text-primary hover:text-primary/90">
+            <Link href="/verify-email" className="font-medium text-primary hover:text-primary/90">
               Verify your email
             </Link>
           </div>

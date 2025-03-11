@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Timetable } from "@/types"
 
-const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday",]
 const timeSlots = Array.from({ length: 12 }, (_, i) => `${i + 8}:00`)
 
 export default function TimetablePage() {
@@ -98,12 +98,12 @@ export default function TimetablePage() {
         <h1 className="text-3xl font-bold tracking-tight">Timetable</h1>
         <p className="text-muted-foreground">View your weekly class schedule</p>
       </div>
-
       <Tabs defaultValue="weekly" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex justify-center space-x-4">
           <TabsTrigger value="weekly">Weekly View</TabsTrigger>
           <TabsTrigger value="daily">Daily View</TabsTrigger>
         </TabsList>
+
         <TabsContent value="weekly" className="space-y-4">
           <Card>
             <CardHeader>
@@ -111,47 +111,52 @@ export default function TimetablePage() {
               <CardDescription>Your classes for the entire week</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-8 gap-4 overflow-x-auto">
-                <div className="sticky left-0 bg-background">
-                  <div className="h-12"></div>
-                  {timeSlots.map((time) => (
-                    <div key={time} className="h-16 border-t pt-2 text-sm text-muted-foreground">
-                      {time}
+              <div className="w-full overflow-x-auto">
+                <div className="grid grid-cols-6 gap-4 min-w-[600px] md:min-w-full">
+                  {/* Time Slots Column (Sticky on Scroll) */}
+                  <div className="sticky left-0 bg-background z-10">
+                    <div className="h-12"></div>
+                    {timeSlots.map((time) => (
+                      <div key={time} className="h-16 border-t pt-2 text-sm text-muted-foreground">
+                        {time}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Daily Columns */}
+                  {daysOfWeek.map((day) => (
+                    <div key={day} className="min-w-[100px] md:min-w-[150px]">
+                      <div className="h-12 font-medium text-center">{day}</div>
+                      <div className="relative">
+                        {timeSlots.map((time) => (
+                          <div key={`${day}-${time}`} className="h-16 border-t"></div>
+                        ))}
+                        {getTimetableForDay(day).map((item) => {
+                          const startHour = Number.parseInt(item.start_time.split(":")[0], 10);
+                          const endHour = Number.parseInt(item.end_time.split(":")[0], 10);
+                          const startOffset = (startHour - 8) * 64; // 64px per hour
+                          const duration = (endHour - startHour) * 64;
+
+                          return (
+                            <div
+                              key={item.id}
+                              className="absolute left-0 right-0 rounded-md bg-primary/10 p-2 text-xs md:text-sm"
+                              style={{
+                                top: `${startOffset}px`,
+                                height: `${duration}px`,
+                              }}
+                            >
+                              <div className="font-medium">{item.course.name}</div>
+                              <div className="text-muted-foreground">
+                                {formatTime(item.start_time)} - {formatTime(item.end_time)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   ))}
                 </div>
-                {daysOfWeek.map((day) => (
-                  <div key={day} className="min-w-[150px]">
-                    <div className="h-12 font-medium">{day}</div>
-                    <div className="relative">
-                      {timeSlots.map((time, index) => (
-                        <div key={`${day}-${time}`} className="h-16 border-t"></div>
-                      ))}
-                      {getTimetableForDay(day).map((item) => {
-                        const startHour = Number.parseInt(item.start_time.split(":")[0], 10)
-                        const endHour = Number.parseInt(item.end_time.split(":")[0], 10)
-                        const startOffset = (startHour - 8) * 64 // 64px per hour
-                        const duration = (endHour - startHour) * 64
-
-                        return (
-                          <div
-                            key={item.id}
-                            className="absolute left-0 right-0 rounded-md bg-primary/10 p-2 text-xs"
-                            style={{
-                              top: `${startOffset}px`,
-                              height: `${duration}px`,
-                            }}
-                          >
-                            <div className="font-medium">{item.course.name}</div>
-                            <div className="text-muted-foreground">
-                              {formatTime(item.start_time)} - {formatTime(item.end_time)}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>
