@@ -1,4 +1,4 @@
-import { LOGIN_URL, BASE_URL, REGISTER_URL, REFRESH_TOKEN_URL, USER_URL, LOGOUT_URL, CHANGE_PASSWORD_URL, RESEND_EMAIL_URL, RESET_PASSWORD_URL, VERIFY_TOKEN_URL } from '@/handler/apiConfig';
+import { LOGIN_URL, BASE_URL, REGISTER_URL, REFRESH_TOKEN_URL, USER_URL, LOGOUT_URL, CHANGE_PASSWORD_URL, RESEND_EMAIL_URL, RESET_PASSWORD_URL, VERIFY_TOKEN_URL, MASS_REGISTER_URL } from '@/handler/apiConfig';
 import { api, handleApiError } from '@/utils/api';
 import axios, { AxiosError, AxiosResponse, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import { User } from '@/types';
@@ -143,6 +143,18 @@ class AuthManager {
   async deleteUser(userId: string): Promise<void> {
     try {
       await api.delete(`${USER_URL}${userId}/`);
+    } catch (error) {
+      handleApiError(error as AxiosError<ApiErrorResponse>);
+      throw error;
+    }
+  }
+
+  async massRegister(users: any[]): Promise<any> {
+    try {
+      const response = await api.post(MASS_REGISTER_URL, {
+        users: users
+      });
+      return response.data;
     } catch (error) {
       handleApiError(error as AxiosError<ApiErrorResponse>);
       throw error;

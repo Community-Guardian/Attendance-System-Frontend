@@ -1,14 +1,13 @@
-export interface GeolocationZone {
-  id: string;
-  name: string;
-  coordinates: Coordinate[];
-  capacity: number;
-  is_active: boolean;
-  current_count?: number;
-  distance?: number;
-}
+import { BaseModel } from './base'
 
-export interface Coordinate {
-  latitude: number;
-  longitude: number;
+export interface GeolocationZone extends BaseModel {
+  name: string
+  coordinates: {
+    latitude: number
+    longitude: number
+    radius: number
+  }
+  capacity: number
+  is_active: boolean
+  distance?: number
 }
