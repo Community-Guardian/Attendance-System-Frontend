@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { Calendar, Clock, Download, FileUp, Loader2, Plus, RefreshCw, Save, Search, Settings, Trash2, Upload, X } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Calendar, Clock, Download, Loader2, Plus, RefreshCw, Settings, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 
 import { Button } from '@/components/ui/button'
@@ -20,55 +19,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Slider } from '@/components/ui/slider'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 
-// Define types for timetable data
-interface TimetableEntry {
-  id: string
-  courseCode: string
-  courseName: string
-  lecturer: string
-  day: string
-  startTime: string
-  endTime: string
-  venue: string
-  department: string
-  programme: string
-  year: string
-  color?: string
-}
+import { useApi } from '@/hooks/useApi'
+import ApiService from '@/handler/ApiService'
+import type { Timetable, ClassGroup, Course, AcademicYear, Semester } from '@/types'
 
-interface Venue {
-  id: string
-  name: string
-  capacity: number
-  type: string
-  building: string
-  floor: string
-}
-
-interface Constraint {
-  id: string
-  type: 'lecturer' | 'venue' | 'course' | 'programme'
-  entityId: string
-  entityName: string
-  constraint: 'unavailable_time' | 'preferred_time' | 'max_hours_per_day' | 'specific_venue'
-  value: string
-  priority: 'low' | 'medium' | 'high'
+// Day of week mapping
+const dayMapping: Record<number, string> = {
+  0: 'Monday',
+  1: 'Tuesday',
+  2: 'Wednesday',
+  3: 'Thursday',
+  4: 'Friday',
+  5: 'Saturday',
+  6: 'Sunday'
 }
 
 export default function TimetableGenerationPage() {
@@ -76,458 +43,161 @@ export default function TimetableGenerationPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationProgress, setGenerationProgress] = useState(0)
   const [showGenerateDialog, setShowGenerateDialog] = useState(false)
-  const [showConstraintDialog, setShowConstraintDialog] = useState(false)
   const [showSettingsDialog, setShowSettingsDialog] = useState(false)
-  const [selectedSemester, setSelectedSemester] = useState('1')
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState('2023-2024')
-  const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null)
-  const [selectedProgramme, setSelectedProgramme] = useState<string | null>(null)
-  const [selectedYear, setSelectedYear] = useState<string | null>(null)
-  const [timetableEntries, setTimetableEntries] = useState<TimetableEntry[]>([])
-  const [draggedEntry, setDraggedEntry] = useState<TimetableEntry | null>(null)
-  const [constraints, setConstraints] = useState<Constraint[]>([])
-  const [newConstraint, setNewConstraint] = useState<Partial<Constraint>>({
-    type: 'lecturer',
-    constraint: 'unavailable_time',
-    priority: 'medium',
+  const [selectedSemester, setSelectedSemester] = useState('')
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState('')
+  const [selectedClassGroup, setSelectedClassGroup] = useState<string | null>("all")
+  const [page, setPage] = useState(1)
+
+  // Use the API hooks for fetching data
+  const { useFetchData: useFetchTimetables,useAddItem: useAddTimetable,useUpdateItem: useUpdateTimetable,useDeleteItem: useDeleteTimetable } = useApi<Timetable, Timetable>(ApiService.TIMETABLE_URL)
+  const { useFetchData: useFetchClassGroups } = useApi<ClassGroup, ClassGroup>(ApiService.CLASS_GROUPS_URL)
+  const { useFetchData: useFetchSemesters } = useApi<Semester, Semester>(ApiService.SEMESTER_URL)
+  const { useFetchData: useFetchAcademicYears } = useApi<AcademicYear, AcademicYear>(ApiService.ACADEMIC_YEAR_URL)
+  const { useAddItem: useGenerateTimetable } = useApi<{},{}>(ApiService.GENERATE_TIMETABLE_URL)
+
+  const { data: timetables, isLoading: isLoadingTimetables, refetch: refetchTimetables } = useFetchTimetables(page, {
+    semester: selectedSemester,
+    academic_year: selectedAcademicYear
   })
-  const [generationSettings, setGenerationSettings] = useState({
-    maxIterations: 1000,
-    populationSize: 50,
-    mutationRate: 0.1,
-    crossoverRate: 0.8,
-    elitismCount: 5,
-    timeSlotPreference: 'morning', // 'morning', 'afternoon', 'evening', 'distributed'
-    avoidBackToBack: true,
-    minimizeRoomChanges: true,
-    respectConstraints: true,
-    optimizeForStudents: true,
-    optimizeForLecturers: true,
-  })
-  const [generationQuality, setGenerationQuality] = useState<'draft' | 'standard' | 'optimal'>('standard')
-  const { toast } = useToast()
-  const router = useRouter()
+  const { data: classGroups } = useFetchClassGroups(1)
+  const { data: semesters } = useFetchSemesters(1)
+  const { data: academicYears } = useFetchAcademicYears(1)
 
-  // Mock data
-  const departments = [
-    { id: 'cs', name: 'Computer Science' },
-    { id: 'it', name: 'Information Technology' },
-    { id: 'ee', name: 'Electrical Engineering' },
-    { id: 'me', name: 'Mechanical Engineering' },
-  ]
+  // Mutation hooks for timetable operations
+  const addTimetableMutation = useAddTimetable
+  const updateTimetableMutation = useUpdateTimetable
+  const deleteTimetableMutation = useDeleteTimetable
+  const generateTimetableMutation = useGenerateTimetable
 
-  const programmes = [
-    { id: 'bsc-cs', name: 'BSc Computer Science', departmentId: 'cs' },
-    { id: 'bsc-it', name: 'BSc Information Technology', departmentId: 'it' },
-    { id: 'bsc-ee', name: 'BSc Electrical Engineering', departmentId: 'ee' },
-    { id: 'bsc-me', name: 'BSc Mechanical Engineering', departmentId: 'me' },
-  ]
-
-  const years = [
-    { id: '1', name: 'Year 1' },
-    { id: '2', name: 'Year 2' },
-    { id: '3', name: 'Year 3' },
-    { id: '4', name: 'Year 4' },
-  ]
-
-  const semesters = [
-    { id: '1', name: 'Semester 1' },
-    { id: '2', name: 'Semester 2' },
-    { id: '3', name: 'Semester 3' },
-  ]
-
-  const academicYears = [
-    { id: '2023-2024', name: '2023-2024' },
-    { id: '2022-2023', name: '2022-2023' },
-    { id: '2021-2022', name: '2021-2022' },
-  ]
-
-  const venues: Venue[] = [
-    { id: 'v1', name: 'CS Lab 1', capacity: 40, type: 'Lab', building: 'CS Building', floor: '1' },
-    { id: 'v2', name: 'CS Lab 2', capacity: 40, type: 'Lab', building: 'CS Building', floor: '1' },
-    { id: 'v3', name: 'IT Lab 1', capacity: 35, type: 'Lab', building: 'IT Building', floor: '2' },
-    { id: 'v4', name: 'IT Lab 2', capacity: 35, type: 'Lab', building: 'IT Building', floor: '2' },
-    { id: 'v5', name: 'EE Lab 1', capacity: 30, type: 'Lab', building: 'Engineering Block', floor: '1' },
-    { id: 'v6', name: 'Lecture Hall A', capacity: 100, type: 'Lecture', building: 'Main Building', floor: 'G' },
-    { id: 'v7', name: 'Lecture Hall B', capacity: 80, type: 'Lecture', building: 'Main Building', floor: 'G' },
-    { id: 'v8', name: 'Seminar Room 1', capacity: 25, type: 'Seminar', building: 'Main Building', floor: '1' },
-    { id: 'v9', name: 'Seminar Room 2', capacity: 25, type: 'Seminar', building: 'Main Building', floor: '1' },
-  ]
-
-  const lecturers = [
-    { id: 'lec1', name: 'Dr. John Smith', departmentId: 'cs' },
-    { id: 'lec2', name: 'Prof. Jane Wilson', departmentId: 'cs' },
-    { id: 'lec3', name: 'Dr. Sarah Davis', departmentId: 'it' },
-    { id: 'lec4', name: 'Prof. Michael Wilson', departmentId: 'it' },
-    { id: 'lec5', name: 'Dr. Lisa Johnson', departmentId: 'ee' },
-    { id: 'lec6', name: 'Prof. Thomas White', departmentId: 'me' },
-  ]
-
-  const courses = [
-    { id: 'c1', code: 'CS301', name: 'Database Systems', departmentId: 'cs' },
-    { id: 'c2', code: 'CS302', name: 'Software Engineering', departmentId: 'cs' },
-    { id: 'c3', code: 'IT301', name: 'Web Development', departmentId: 'it' },
-    { id: 'c4', code: 'IT302', name: 'Mobile App Development', departmentId: 'it' },
-    { id: 'c5', code: 'EE301', name: 'Circuit Analysis', departmentId: 'ee' },
-    { id: 'c6', code: 'ME301', name: 'Thermodynamics', departmentId: 'me' },
-  ]
-
-  const mockTimetableEntries: TimetableEntry[] = [
-    {
-      id: '1',
-      courseCode: 'CS301',
-      courseName: 'Database Systems',
-      lecturer: 'Dr. John Smith',
-      day: 'Monday',
-      startTime: '09:00',
-      endTime: '11:00',
-      venue: 'CS Lab 1',
-      department: 'Computer Science',
-      programme: 'BSc Computer Science',
-      year: 'Year 3',
-      color: '#3b82f6',
-    },
-    {
-      id: '2',
-      courseCode: 'CS302',
-      courseName: 'Software Engineering',
-      lecturer: 'Prof. Jane Wilson',
-      day: 'Monday',
-      startTime: '14:00',
-      endTime: '16:00',
-      venue: 'CS Lab 2',
-      department: 'Computer Science',
-      programme: 'BSc Computer Science',
-      year: 'Year 3',
-      color: '#10b981',
-    },
-    {
-      id: '3',
-      courseCode: 'IT301',
-      courseName: 'Web Development',
-      lecturer: 'Dr. Sarah Davis',
-      day: 'Tuesday',
-      startTime: '09:00',
-      endTime: '11:00',
-      venue: 'IT Lab 1',
-      department: 'Information Technology',
-      programme: 'BSc Information Technology',
-      year: 'Year 3',
-      color: '#f59e0b',
-    },
-    {
-      id: '4',
-      courseCode: 'IT302',
-      courseName: 'Mobile App Development',
-      lecturer: 'Prof. Michael Wilson',
-      day: 'Wednesday',
-      startTime: '14:00',
-      endTime: '16:00',
-      venue: 'IT Lab 2',
-      department: 'Information Technology',
-      programme: 'BSc Information Technology',
-      year: 'Year 3',
-      color: '#ec4899',
-    },
-    {
-      id: '5',
-      courseCode: 'EE301',
-      courseName: 'Circuit Analysis',
-      lecturer: 'Dr. Lisa Johnson',
-      day: 'Thursday',
-      startTime: '09:00',
-      endTime: '11:00',
-      venue: 'EE Lab 1',
-      department: 'Electrical Engineering',
-      programme: 'BSc Electrical Engineering',
-      year: 'Year 3',
-      color: '#8b5cf6',
-    },
-  ]
-
-  const mockConstraints: Constraint[] = [
-    {
-      id: '1',
-      type: 'lecturer',
-      entityId: 'lec1',
-      entityName: 'Dr. John Smith',
-      constraint: 'unavailable_time',
-      value: 'Monday, 14:00-16:00',
-      priority: 'high',
-    },
-    {
-      id: '2',
-      type: 'venue',
-      entityId: 'v1',
-      entityName: 'CS Lab 1',
-      constraint: 'unavailable_time',
-      value: 'Friday, 16:00-18:00',
-      priority: 'medium',
-    },
-    {
-      id: '3',
-      type: 'course',
-      entityId: 'c1',
-      entityName: 'CS301 - Database Systems',
-      constraint: 'specific_venue',
-      value: 'CS Lab 1',
-      priority: 'medium',
-    },
-    {
-      id: '4',
-      type: 'programme',
-      entityId: 'bsc-cs',
-      entityName: 'BSc Computer Science',
-      constraint: 'max_hours_per_day',
-      value: '6',
-      priority: 'high',
-    },
-  ]
-
-  useEffect(() => {
-    // Simulate API call to fetch timetable entries and constraints
-    setTimeout(() => {
-      setTimetableEntries(mockTimetableEntries)
-      setConstraints(mockConstraints)
-      setIsLoading(false)
-    }, 1000)
-  }, [])
-
-  const handleDragStart = (entry: TimetableEntry) => {
-    setDraggedEntry(entry)
-  }
-
-  const handleDragOver = (e: React.DragEvent<HTMLTableCellElement>) => {
-    e.preventDefault()
-    e.currentTarget.classList.add('bg-primary/10')
-  }
-
-  const handleDragLeave = (e: React.DragEvent<HTMLTableCellElement>) => {
-    e.currentTarget.classList.remove('bg-primary/10')
-  }
-
-  const handleDrop = (e: React.DragEvent<HTMLTableCellElement>, day: string, timeSlot: string) => {
-    e.preventDefault()
-    e.currentTarget.classList.remove('bg-primary/10')
-    
-    if (draggedEntry) {
-      // Extract start time from the time slot
-      const startTime = timeSlot.split(' - ')[0]
-      
-      // Calculate end time (assuming 2-hour slots)
-      const [hours, minutes] = startTime.split(':').map(Number)
-      const endHours = hours + 2
-      const endTime = `${endHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
-      
-      // Create updated entry
-      const updatedEntry = {
-        ...draggedEntry,
-        day,
-        startTime,
-        endTime,
+  const handleAddTimetable = (timetableData: Partial<Timetable>) => {
+    if (addTimetableMutation.status === 'pending') return
+    addTimetableMutation.mutate(timetableData, {
+      onSuccess: async () => {
+        await refetchTimetables()
+        toast.success('Timetable entry added successfully')
+      },
+      onError: (error: any) => {
+        toast.error('Failed to add timetable entry')
+        console.error('Add timetable error:', error)
       }
-      
-      // Update the timetable entries
-      setTimetableEntries(prev => 
-        prev.map(entry => entry.id === draggedEntry.id ? updatedEntry : entry)
-      )
-      
-      toast({
-        title: 'Timetable Updated',
-        description: `${draggedEntry.courseName} moved to ${day} at ${startTime}`,
+    })
+  }
+
+  const handleUpdateTimetable = (id: string, timetableData: Partial<Timetable>) => {
+    if (updateTimetableMutation.status === 'pending') return
+    updateTimetableMutation.mutate({ id, item: timetableData }, {
+      onSuccess: async () => {
+        await refetchTimetables()
+        toast.success('Timetable entry updated successfully')
+      },
+      onError: (error: any) => {
+        toast.error('Failed to update timetable entry')
+        console.error('Update timetable error:', error)
+      }
+    })
+  }
+
+  const handleDeleteTimetable = (id: string) => {
+    if (deleteTimetableMutation.status === 'pending') return
+    if (window.confirm('Are you sure you want to delete this timetable entry?')) {
+      deleteTimetableMutation.mutate(id, {
+        onSuccess: async () => {
+          await refetchTimetables()
+          toast.success('Timetable entry deleted successfully')
+        },
+        onError: (error: any) => {
+          toast.error('Failed to delete timetable entry')
+          console.error('Delete timetable error:', error)
+        }
       })
     }
-    
-    setDraggedEntry(null)
   }
 
-  const handleGenerateTimetable = () => {
-    setIsGenerating(true)
-    setGenerationProgress(0)
-    
-    // Simulate timetable generation with progress updates
-    const interval = setInterval(() => {
-      setGenerationProgress(prev => {
-        const newProgress = prev + Math.random() * 10
-        if (newProgress >= 100) {
-          clearInterval(interval)
-          
-          // Simulate API call to generate timetable
-          setTimeout(() => {
-            setIsGenerating(false)
-            setShowGenerateDialog(false)
-            setGenerationProgress(0)
-            
-            // Generate random timetable entries
-            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-            const timeSlots = ['08:00', '10:00', '12:00', '14:00', '16:00']
-            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#f43f5e']
-            
-            const newEntries: TimetableEntry[] = []
-            
-            courses.forEach((course, index) => {
-              const dept = departments.find(d => d.id === course.departmentId)
-              const prog = programmes.find(p => p.departmentId === course.departmentId)
-              const lec = lecturers.find(l => l.departmentId === course.departmentId)
-              const venue = venues.find(v => v.type === (course.departmentId === 'cs' || course.departmentId === 'it' ? 'Lab' : 'Lecture'))
-              
-              // Randomly select day and time
-              const day = days[Math.floor(Math.random() * days.length)]
-              const startTimeIndex = Math.floor(Math.random() * timeSlots.length)
-              const startTime = timeSlots[startTimeIndex]
-              
-              // Calculate end time (2 hours later)
-              const [hours, minutes] = startTime.split(':').map(Number)
-              const endHours = hours + 2
-              const endTime = `${endHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
-              
-              newEntries.push({
-                id: (index + 1).toString(),
-                courseCode: course.code,
-                courseName: course.name,
-                lecturer: lec?.name || 'TBA',
-                day,
-                startTime,
-                endTime,
-                venue: venue?.name || 'TBA',
-                department: dept?.name || 'Unknown',
-                programme: prog?.name || 'Unknown',
-                year: 'Year 3',
-                color: colors[index % colors.length],
-              })
-            })
-            
-            setTimetableEntries(newEntries)
-            
-            toast({
-              title: 'Timetable Generated',
-              description: 'The timetable has been generated successfully.',
-            })
-          }, 1000)
-          
-          return 100
-        }
-        return newProgress
-      })
-    }, 200)
-  }
-
-  const handleAddConstraint = () => {
-    if (!newConstraint.entityId || !newConstraint.value) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please fill in all required fields.',
-        variant: 'destructive',
-      })
+  const handleGenerateTimetable = async () => {
+    if (!selectedSemester || !selectedAcademicYear) {
+      toast.error('Please select both semester and academic year')
       return
     }
     
-    // Create new constraint
-    const constraint: Constraint = {
-      id: (constraints.length + 1).toString(),
-      type: newConstraint.type as 'lecturer' | 'venue' | 'course' | 'programme',
-      entityId: newConstraint.entityId,
-      entityName: newConstraint.entityName || '',
-      constraint: newConstraint.constraint as 'unavailable_time' | 'preferred_time' | 'max_hours_per_day' | 'specific_venue',
-      value: newConstraint.value,
-      priority: newConstraint.priority as 'low' | 'medium' | 'high',
+    if (generateTimetableMutation.status === 'pending') return
+    
+    setIsGenerating(true)
+    setGenerationProgress(0)
+    
+    generateTimetableMutation.mutate({
+      academic_year: selectedAcademicYear,
+      semester: selectedSemester,
+    }, {
+      onSuccess: async (data: any) => {
+        setGenerationProgress(100)
+        await refetchTimetables()
+        toast.success('Generation successful',{
+          description: data.message ||'Timetable generated successfully'
+        })
+        setShowGenerateDialog(false)
+      },
+      onError: (error: any) => {
+        toast.error('Failed to generate timetable')
+        console.error('Timetable generation error:', error)
+      },
+      onSettled: () => {
+        setIsGenerating(false)
+      }
+    })
+  }
+
+  // Filter timetables based on selections
+  const filteredTimetables = timetables?.results || []
+
+  useEffect(() => {
+    // Wait for all data to be loaded
+    if (!isLoadingTimetables && semesters && academicYears && classGroups) {
+      setIsLoading(false)
+      
+      // Set default selections if available
+      if (semesters?.results?.length > 0) {
+        const currentSemester = semesters.results.find(s => s.is_current)
+        setSelectedSemester(currentSemester?.id || semesters.results[0].id)
+      }
+      
+      if (academicYears?.results?.length > 0) {
+        const currentYear = academicYears.results.find(y => y.is_active)
+        setSelectedAcademicYear(currentYear?.id || academicYears.results[0].id)
+      }
     }
-    
-    // Add to constraints list
-    setConstraints([...constraints, constraint])
-    
-    // Reset form
-    setNewConstraint({
-      type: 'lecturer',
-      constraint: 'unavailable_time',
-      priority: 'medium',
-    })
-    
-    // Close dialog
-    setShowConstraintDialog(false)
-    
-    toast({
-      title: 'Constraint Added',
-      description: 'The constraint has been added successfully.',
-    })
-  }
+  }, [isLoadingTimetables, semesters, academicYears, classGroups])
 
-  const handleDeleteConstraint = (id: string) => {
-    setConstraints(constraints.filter(c => c.id !== id))
-    
-    toast({
-      title: 'Constraint Deleted',
-      description: 'The constraint has been deleted successfully.',
-    })
-  }
-
-  const handleSaveSettings = () => {
-    setShowSettingsDialog(false)
-    
-    toast({
-      title: 'Settings Saved',
-      description: 'Timetable generation settings have been saved successfully.',
-    })
-  }
-
-  const getQualityDescription = () => {
-    switch (generationQuality) {
-      case 'draft':
-        return 'Quick generation with basic constraint satisfaction. May require manual adjustments.'
-      case 'standard':
-        return 'Balanced approach with good constraint satisfaction and optimization.'
-      case 'optimal':
-        return 'Thorough optimization with maximum constraint satisfaction. Takes longer to generate.'
-    }
-  }
-
-  const getQualitySettings = () => {
-    switch (generationQuality) {
-      case 'draft':
-        return {
-          maxIterations: 500,
-          populationSize: 30,
-          mutationRate: 0.2,
-          crossoverRate: 0.7,
-          elitismCount: 3,
-        }
-      case 'standard':
-        return {
-          maxIterations: 1000,
-          populationSize: 50,
-          mutationRate: 0.1,
-          crossoverRate: 0.8,
-          elitismCount: 5,
-        }
-      case 'optimal':
-        return {
-          maxIterations: 2000,
-          populationSize: 100,
-          mutationRate: 0.05,
-          crossoverRate: 0.9,
-          elitismCount: 10,
-        }
-    }
+  // Format time in 12-hour format with AM/PM
+  const formatTime = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':').map(Number)
+    const period = hours >= 12 ? 'PM' : 'AM'
+    const displayHours = hours % 12 || 12
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
   }
 
   const timeSlots = ['08:00 - 10:00', '10:00 - 12:00', '12:00 - 14:00', '14:00 - 16:00', '16:00 - 18:00']
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+  const [academicYearSemesters, setAcademicYearSemesters] = useState<Semester[]>([])
+
+  useEffect(() => {
+    if (selectedAcademicYear) {
+      const activeSemesters = academicYears?.results?.find((year: AcademicYear) => year.id === selectedAcademicYear)?.active_semesters || []
+      setAcademicYearSemesters(activeSemesters)
+    }
+  }, [selectedAcademicYear, academicYears])
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Timetable Generation</h1>
-          <p className="text-muted-foreground">Automatically generate and customize class timetables</p>
+          <h1 className="text-3xl font-bold tracking-tight">Timetable Management</h1>
+          <p className="text-muted-foreground">Manage and generate class timetables</p>
         </div>
         <div className="flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
           <Button onClick={() => setShowGenerateDialog(true)}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Generate Timetable
-          </Button>
-          <Button variant="outline" onClick={() => setShowConstraintDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Constraint
           </Button>
           <Button variant="outline" onClick={() => setShowSettingsDialog(true)}>
             <Settings className="mr-2 h-4 w-4" />
@@ -536,336 +206,181 @@ export default function TimetableGenerationPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-2">
+      <div className="grid gap-6 md:grid-cols-1">
+        <Card>
           <CardHeader>
-            <CardTitle>Timetable Preview</CardTitle>
-            <CardDescription>Drag and drop to adjust the generated timetable</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-auto">
-              <div className="min-w-[800px]">
-                <Table className="border">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[100px]">Time</TableHead>
-                      {days.map((day) => (
-                        <TableHead key={day}>{day}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {timeSlots.map((timeSlot) => (
-                      <TableRow key={timeSlot}>
-                        <TableCell className="font-medium">{timeSlot}</TableCell>
-                        {days.map((day) => {
-                          const entry = timetableEntries.find(
-                            (e) => 
-                              e.day === day && 
-                              e.startTime === timeSlot.split(' - ')[0]
-                          )
-                          
-                          return (
-                            <TableCell 
-                              key={`${day}-${timeSlot}`}
-                              className="h-24 border"
-                              onDragOver={handleDragOver}
-                              onDragLeave={handleDragLeave}
-                              onDrop={(e) => handleDrop(e, day, timeSlot)}
-                            >
-                              {entry && (
-                                <div 
-                                  className="rounded-md p-2 text-xs"
-                                  style={{ backgroundColor: `${entry.color}20`, borderLeft: `3px solid ${entry.color}` }}
-                                  draggable
-                                  onDragStart={() => handleDragStart(entry)}
-                                >
-                                  <div className="font-medium">{entry.courseName}</div>
-                                  <div>{entry.courseCode}</div>
-                                  <div className="mt-1 text-muted-foreground">{entry.lecturer}</div>
-                                  <div className="text-muted-foreground">{entry.venue}</div>
-                                </div>
-                              )}
-                            </TableCell>
-                          )
-                        })}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+            <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+              <div>
+                <CardTitle>Timetable Entries</CardTitle>
+                <CardDescription>View and manage class timetables</CardDescription>
               </div>
-            </div>
-          </CardContent>
-          <CardFooter className="border-t p-4">
-            <div className="flex w-full items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Select value={selectedAcademicYear} onValueChange={setSelectedAcademicYear}>
-                  <SelectTrigger className="w-[150px]">
+                  <SelectTrigger className="w-[160px]">
                     <SelectValue placeholder="Academic Year" />
                   </SelectTrigger>
                   <SelectContent>
-                    {academicYears.map((year) => (
+                    {academicYears?.results?.map((year: AcademicYear) => (
                       <SelectItem key={year.id} value={year.id}>
-                        {year.name}
+                        {year.year}
                       </SelectItem>
-                    ))}
+                    )) || []}
                   </SelectContent>
                 </Select>
                 <Select value={selectedSemester} onValueChange={setSelectedSemester}>
-                  <SelectTrigger className="w-[150px]">
+                  <SelectTrigger className="w-[160px]">
                     <SelectValue placeholder="Semester" />
                   </SelectTrigger>
                   <SelectContent>
-                    {semesters.map((semester) => (
+                    {academicYearSemesters?.map((semester: Semester) => (
                       <SelectItem key={semester.id} value={semester.id}>
                         {semester.name}
                       </SelectItem>
-                    ))}
+                    )) || []}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm">
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Changes
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Download className="mr-2 h-4 w-4" />
-                  Export
-                </Button>
-              </div>
             </div>
-          </CardFooter>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Constraints</CardTitle>
-            <CardDescription>Rules and preferences for timetable generation</CardDescription>
           </CardHeader>
-          <CardContent>
-            {constraints.length === 0 ? (
-              <div className="flex h-[200px] flex-col items-center justify-center space-y-2 text-center">
-                <Settings className="h-8 w-8 text-muted-foreground" />
-                <p className="text-lg font-medium">No constraints defined</p>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="flex h-[300px] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredTimetables.length === 0 ? (
+              <div className="flex h-[300px] flex-col items-center justify-center space-y-2 text-center">
+                <Calendar className="h-8 w-8 text-muted-foreground" />
+                <p className="text-lg font-medium">No timetable entries found</p>
                 <p className="text-sm text-muted-foreground">
-                  Add constraints to improve timetable generation
+                  Generate a timetable to get started
                 </p>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowConstraintDialog(true)}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Constraint
-                </Button>
               </div>
             ) : (
-              <div className="space-y-4">
-                {constraints.map((constraint) => (
-                  <div 
-                    key={constraint.id} 
-                    className="flex items-center justify-between rounded-md border p-3"
-                  >
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <Badge 
-                          variant={
-                            constraint.priority === 'high' 
-                              ? 'destructive' 
-                              : constraint.priority === 'medium' 
-                                ? 'default' 
-                                : 'outline'
-                          }
-                        >
-                          {constraint.priority}
-                        </Badge>
-                        <span className="font-medium">{constraint.entityName}</span>
-                      </div>
-                      <div className="mt-1 text-sm text-muted-foreground">
-                        {constraint.constraint === 'unavailable_time' && 'Unavailable at'}
-                        {constraint.constraint === 'preferred_time' && 'Prefers'}
-                        {constraint.constraint === 'max_hours_per_day' && 'Max hours per day:'}
-                        {constraint.constraint === 'specific_venue' && 'Requires venue:'}
-                        {' '}
-                        {constraint.value}
-                      </div>
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleDeleteConstraint(constraint.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+              <div className="max-h-[600px] overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Course</TableHead>
+                      <TableHead>Lecturer</TableHead>
+                      <TableHead>Class Group</TableHead>
+                      <TableHead>Day</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTimetables.map((entry) => (
+                      <TableRow key={entry.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{entry.course.name}</div>
+                            <div className="text-sm text-muted-foreground">{entry.course.code}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{entry.lecturer}</TableCell>
+                        <TableCell>{entry.class_group.name}</TableCell>
+                        <TableCell>{typeof entry.day_of_week === 'number' ? dayMapping[entry.day_of_week] : entry.day_of_week}</TableCell>
+                        <TableCell>
+                          {formatTime(entry.start_time)} - {formatTime(entry.end_time)}
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div>{entry.location_name}</div>
+                            {entry.is_makeup_class && (
+                              <Badge variant="outline" className="mt-1">Makeup Class</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" onClick={() => handleUpdateTimetable(entry.id, {lecturer: 'New Lecturer'})}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteTimetable(entry.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))} 
+                  </TableBody>
+                </Table>
               </div>
             )}
           </CardContent>
+          <CardFooter className="border-t p-4">
+            <div className="flex items-center justify-between w-full">
+              <p className="text-sm text-muted-foreground">
+                Total entries: {filteredTimetables.length}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => handleAddTimetable({lecturer: 'New Lecturer'})}>
+                <Download className="mr-2 h-4 w-4" />
+                Export Timetable
+              </Button>
+            </div>
+          </CardFooter>
         </Card>
       </div>
 
       {/* Generate Timetable Dialog */}
       <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Generate Timetable</DialogTitle>
             <DialogDescription>
-              Automatically generate a timetable based on courses, constraints, and preferences.
+              Automatically generate a timetable based on courses, enrollments and available venues.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="academicYear">Academic Year</Label>
+                <Label htmlFor="generateYear">Academic Year</Label>
                 <Select value={selectedAcademicYear} onValueChange={setSelectedAcademicYear}>
-                  <SelectTrigger id="academicYear">
-                    <SelectValue placeholder="Select academic year" />
+                  <SelectTrigger id="generateYear">
+                    <SelectValue placeholder="Select year" />
                   </SelectTrigger>
                   <SelectContent>
-                    {academicYears.map((year) => (
+                    {academicYears?.results?.map((year: any) => (
                       <SelectItem key={year.id} value={year.id}>
-                        {year.name}
+                        {year.year}
                       </SelectItem>
-                    ))}
+                    )) || []}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="semester">Semester</Label>
+                <Label htmlFor="generateSemester">Semester</Label>
                 <Select value={selectedSemester} onValueChange={setSelectedSemester}>
-                  <SelectTrigger id="semester">
+                  <SelectTrigger id="generateSemester">
                     <SelectValue placeholder="Select semester" />
                   </SelectTrigger>
                   <SelectContent>
-                    {semesters.map((semester) => (
+                    {semesters?.results?.map((semester: any) => (
                       <SelectItem key={semester.id} value={semester.id}>
                         {semester.name}
                       </SelectItem>
-                    ))}
+                    )) || []}
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="department">Department</Label>
-              <Select value={selectedDepartment || 'all'} onValueChange={setSelectedDepartment}>
-                <SelectTrigger id="department">
-                  <SelectValue placeholder="Select department" />
+              <Label htmlFor="generateClass">Class Group (Optional)</Label>
+              <Select value={selectedClassGroup as string} onValueChange={setSelectedClassGroup}>
+                <SelectTrigger id="generateClass">
+                  <SelectValue placeholder="Select class group (or all)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>
-                      {dept.name}
+                  <SelectItem value="all">All Class Groups</SelectItem>
+                  {classGroups?.results?.map((group: ClassGroup) => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.name}
                     </SelectItem>
-                  ))}
+                  )) || []}
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="programme">Programme</Label>
-              <Select value={selectedProgramme || 'all'} onValueChange={setSelectedProgramme}>
-                <SelectTrigger id="programme">
-                  <SelectValue placeholder="Select programme" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Programmes</SelectItem>
-                  {programmes
-                    .filter(
-                      (prog) =>
-                        !selectedDepartment || prog.departmentId === selectedDepartment
-                    )
-                    .map((prog) => (
-                      <SelectItem key={prog.id} value={prog.id}>
-                        {prog.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="year">Year of Study</Label>
-              <Select value={selectedYear || 'all'} onValueChange={setSelectedYear}>
-                <SelectTrigger id="year">
-                  <SelectValue placeholder="Select year" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Years</SelectItem>
-                  {years.map((year) => (
-                    <SelectItem key={year.id} value={year.id}>
-                      {year.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>Generation Quality</Label>
-              <div className="grid grid-cols-3 gap-2">
-                <Button
-                  type="button"
-                  variant={generationQuality === 'draft' ? 'default' : 'outline'}
-                  className="w-full"
-                  onClick={() => setGenerationQuality('draft')}
-                >
-                  Draft
-                </Button>
-                <Button
-                  type="button"
-                  variant={generationQuality === 'standard' ? 'default' : 'outline'}
-                  className="w-full"
-                  onClick={() => setGenerationQuality('standard')}
-                >
-                  Standard
-                </Button>
-                <Button
-                  type="button"
-                  variant={generationQuality === 'optimal' ? 'default' : 'outline'}
-                  className="w-full"
-                  onClick={() => setGenerationQuality('optimal')}
-                >
-                  Optimal
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground">{getQualityDescription()}</p>
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="respectConstraints">Respect All Constraints</Label>
-                <Switch
-                  id="respectConstraints"
-                  checked={generationSettings.respectConstraints}
-                  onCheckedChange={(checked) => 
-                    setGenerationSettings({ ...generationSettings, respectConstraints: checked })
-                  }
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="avoidBackToBack">Avoid Back-to-Back Classes</Label>
-                <Switch
-                  id="avoidBackToBack"
-                  checked={generationSettings.avoidBackToBack}
-                  onCheckedChange={(checked) => 
-                    setGenerationSettings({ ...generationSettings, avoidBackToBack: checked })
-                  }
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="minimizeRoomChanges">Minimize Room Changes</Label>
-                <Switch
-                  id="minimizeRoomChanges"
-                  checked={generationSettings.minimizeRoomChanges}
-                  onCheckedChange={(checked) => 
-                    setGenerationSettings({ ...generationSettings, minimizeRoomChanges: checked })
-                  }
-                />
-              </div>
+            <div className="bg-amber-50 p-3 rounded-md border border-amber-200 text-amber-800 text-sm mt-2">
+              <p><strong>Note:</strong> Generating a new timetable will replace any existing entries for the selected semester.</p>
             </div>
           </div>
           <DialogFooter>
@@ -889,247 +404,46 @@ export default function TimetableGenerationPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Constraint Dialog */}
-      <Dialog open={showConstraintDialog} onOpenChange={setShowConstraintDialog}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Add Constraint</DialogTitle>
-            <DialogDescription>
-              Define constraints and preferences for timetable generation.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="constraintType">Constraint Type</Label>
-              <Select
-                value={newConstraint.type}
-                onValueChange={(value: 'lecturer' | 'venue' | 'course' | 'programme') => 
-                  setNewConstraint({ ...newConstraint, type: value })
-                }
-              >
-                <SelectTrigger id="constraintType">
-                  <SelectValue placeholder="Select constraint type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="lecturer">Lecturer</SelectItem>
-                  <SelectItem value="venue">Venue</SelectItem>
-                  <SelectItem value="course">Course</SelectItem>
-                  <SelectItem value="programme">Programme</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="entity">
-                {newConstraint.type === 'lecturer' && 'Lecturer'}
-                {newConstraint.type === 'venue' && 'Venue'}
-                {newConstraint.type === 'course' && 'Course'}
-                {newConstraint.type === 'programme' && 'Programme'}
-              </Label>
-              <Select
-                value={newConstraint.entityId}
-                onValueChange={(value) => {
-                  let entityName = ''
-                  
-                  if (newConstraint.type === 'lecturer') {
-                    entityName = lecturers.find(l => l.id === value)?.name || ''
-                  } else if (newConstraint.type === 'venue') {
-                    entityName = venues.find(v => v.id === value)?.name || ''
-                  } else if (newConstraint.type === 'course') {
-                    const course = courses.find(c => c.id === value)
-                    entityName = course ? `${course.code} - ${course.name}` : ''
-                  } else if (newConstraint.type === 'programme') {
-                    entityName = programmes.find(p => p.id === value)?.name || ''
-                  }
-                  
-                  setNewConstraint({ 
-                    ...newConstraint, 
-                    entityId: value,
-                    entityName,
-                  })
-                }}
-              >
-                <SelectTrigger id="entity">
-                  <SelectValue placeholder={`Select ${newConstraint.type}`} />
-                </SelectTrigger>
-                <SelectContent>
-                  {newConstraint.type === 'lecturer' && lecturers.map((lecturer) => (
-                    <SelectItem key={lecturer.id} value={lecturer.id}>
-                      {lecturer.name}
-                    </SelectItem>
-                  ))}
-                  {newConstraint.type === 'venue' && venues.map((venue) => (
-                    <SelectItem key={venue.id} value={venue.id}>
-                      {venue.name}
-                    </SelectItem>
-                  ))}
-                  {newConstraint.type === 'course' && courses.map((course) => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.code} - {course.name}
-                    </SelectItem>
-                  ))}
-                  {newConstraint.type === 'programme' && programmes.map((programme) => (
-                    <SelectItem key={programme.id} value={programme.id}>
-                      {programme.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="constraintRule">Constraint Rule</Label>
-              <Select
-                value={newConstraint.constraint}
-                onValueChange={(value: 'unavailable_time' | 'preferred_time' | 'max_hours_per_day' | 'specific_venue') => 
-                  setNewConstraint({ ...newConstraint, constraint: value })
-                }
-              >
-                <SelectTrigger id="constraintRule">
-                  <SelectValue placeholder="Select constraint rule" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unavailable_time">Unavailable Time</SelectItem>
-                  <SelectItem value="preferred_time">Preferred Time</SelectItem>
-                  {(newConstraint.type === 'lecturer' || newConstraint.type === 'programme') && (
-                    <SelectItem value="max_hours_per_day">Maximum Hours Per Day</SelectItem>
-                  )}
-                  {newConstraint.type === 'course' && (
-                    <SelectItem value="specific_venue">Specific Venue Required</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="constraintValue">
-                {newConstraint.constraint === 'unavailable_time' && 'Unavailable Time'}
-                {newConstraint.constraint === 'preferred_time' && 'Preferred Time'}
-                {newConstraint.constraint === 'max_hours_per_day' && 'Maximum Hours'}
-                {newConstraint.constraint === 'specific_venue' && 'Required Venue'}
-              </Label>
-              
-              {(newConstraint.constraint === 'unavailable_time' || newConstraint.constraint === 'preferred_time') && (
-                <div className="grid grid-cols-2 gap-2">
-                  <Select
-                    value={newConstraint.day || ''}
-                    onValueChange={(value) => {
-                      const currentTime = newConstraint.time || ''
-                      setNewConstraint({ 
-                        ...newConstraint, 
-                        day: value,
-                        value: `${value}, ${currentTime}`,
-                      })
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select day" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {days.map((day) => (
-                        <SelectItem key={day} value={day}>
-                          {day}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={newConstraint.time || ''}
-                    onValueChange={(value) => {
-                      const currentDay = newConstraint.day || ''
-                      setNewConstraint({ 
-                        ...newConstraint, 
-                        time: value,
-                        value: `${currentDay}, ${value}`,
-                      })
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeSlots.map((slot) => (
-                        <SelectItem key={slot} value={slot}>
-                          {slot}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
-              {newConstraint.constraint === 'max_hours_per_day' && (
-                <Input
-                  id="constraintValue"
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={newConstraint.value || ''}
-                  onChange={(e) => setNewConstraint({ ...newConstraint, value: e.target.value })}
-                />
-              )}
-              
-              {newConstraint.constraint === 'specific_venue' && (
-                <Select
-                  value={newConstraint.value || ''}
-                  onValueChange={(value) => setNewConstraint({ ...newConstraint, value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select venue" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {venues.map((venue) => (
-                      <SelectItem key={venue.id} value={venue.name}>
-                        {venue.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="priority">Priority</Label>
-              <Select
-                value={newConstraint.priority}
-                onValueChange={(value: 'low' | 'medium' | 'high') => 
-                  setNewConstraint({ ...newConstraint, priority: value })
-                }
-              >
-                <SelectTrigger id="priority">
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConstraintDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddConstraint}>
-              Add Constraint
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Settings Dialog */}
       <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Settings</DialogTitle>
+            <DialogTitle>Timetable Settings</DialogTitle>
+            <DialogDescription>Configure timetable generation rules</DialogDescription>
           </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Max Class Duration</Label>
+              <Input type="number" placeholder="Maximum hours per session" defaultValue={3} />
+              <p className="text-sm text-muted-foreground">Maximum duration of a single class in hours</p>
+            </div>
+            <div className="grid gap-2">
+              <Label>Allow Makeup Classes</Label>
+              <Select defaultValue="true">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Yes</SelectItem>
+                  <SelectItem value="false">No</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">Allow scheduling makeup classes on weekends</p>
+            </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSettingsDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveSettings}>
-              Save
+            <Button onClick={() => {
+              toast.success('Settings saved');
+              setShowSettingsDialog(false);
+            }}>
+              Save Settings
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   )
-} 
+}

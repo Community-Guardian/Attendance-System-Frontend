@@ -39,20 +39,21 @@ export interface ClassGroup extends BaseModel {
   total_students: number
 }
 
-export interface AcademicYear extends BaseModel {
-  name: string
-  start_date: string
-  end_date: string
-  is_current: boolean
+export interface AcademicYear {
+  id: string
+  year: string
+  is_active: boolean
   active_semesters: Semester[]
 }
 
-export interface Semester extends BaseModel {
+export interface Semester {
+  id: string
   name: string
-  academic_year: string
+  academic_year: Partial<AcademicYear>
   academic_year_id?: string
   start_date: string
   end_date: string
   is_current: boolean
   duration: number
+  is_active: boolean
 }

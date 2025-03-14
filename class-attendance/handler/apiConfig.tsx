@@ -65,6 +65,7 @@ export const TIMETABLE_URL = `${BASE_URL}/timetable/timetables/`;
 export const EXAM_TIMETABLE_URL = `${BASE_URL}/timetable/exams/`;
 export const TIMETABLE_SLOTS_URL = `${BASE_URL}/timetable/slots/`;
 export const TIMETABLE_CONFLICTS_URL = `${BASE_URL}/timetable/conflicts/`;
+export const GENERATE_TIMETABLE_URL = `${BASE_URL}/timetable/timetables/generate/`;
 
 // ==========================================
 // Configuration & Settings Endpoints

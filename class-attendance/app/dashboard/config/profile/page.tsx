@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { Camera, Loader2, Mail, Phone, Save, User } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Camera, Loader2, Mail, Phone, Save } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,31 +9,27 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Textarea } from '@/components/ui/textarea'
-import { useToast } from '@/hooks/use-toast'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { toast } from 'sonner'
+
+import { useApi } from '@/hooks/useApi'
+import ApiService from '@/handler/ApiService'
+import type { User as UserType } from '@/types'
 
 export default function ProfilePage() {
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { toast } = useToast()
 
-  // Mock user data
-  const [userData, setUserData] = useState({
-    id: 'admin123',
-    firstName: 'Admin',
-    lastName: 'User',
-    email: 'admin@example.com',
-    phone: '+254 712 345 678',
-    role: 'config_user',
-    department: 'IT Administration',
-    bio: 'System administrator responsible for configuration and maintenance of the attendance system.',
-    profileImage: '/placeholder.svg?height=100&width=100',
-    lastLogin: '2023-11-10T08:30:45Z',
-    accountCreated: '2023-01-15T10:00:00Z',
-  })
+  // Use the API hooks for fetching and updating user data
+  const { useFetchData: useFetchUser, useUpdateItem: useUpdateUser } = useApi<UserType, UserType>(ApiService.USER_URL)
+  const { useAddItem: useChangePassword } = useApi<{}, {}>(ApiService.CHANGE_PASSWORD_URL)
+
+  // Get current user data
+  const { data: userData, isLoading: isLoadingUser, refetch: refetchUser } = useFetchUser(1)
+  const updateUserMutation = useUpdateUser
+  const changePasswordMutation = useChangePassword
 
   // Password change form
   const [passwordData, setPasswordData] = useState({
@@ -42,90 +38,117 @@ export default function ProfilePage() {
     confirmPassword: '',
   })
 
-  const handleProfileUpdate = () => {
-    setIsSaving(true)
+  const handleProfileUpdate = async () => {
+    if (updateUserMutation.status === 'pending') return
     
-    // Simulate API call to update profile
-    setTimeout(() => {
+    setIsSaving(true)
+    const currentUser = userData?.results[0]
+    if (!currentUser?.id) {
+      toast.error('User data not found')
       setIsSaving(false)
-      
-      toast({
-        title: 'Profile Updated',
-        description: 'Your profile information has been updated successfully.',
-      })
-    }, 1500)
+      return
+    }
+
+    updateUserMutation.mutate({ 
+      id: currentUser.id, 
+      item: {
+        first_name: currentUser.first_name,
+        last_name: currentUser.last_name,
+        phone_number: currentUser.phone_number
+      }
+    }, {
+      onSuccess: async () => {
+        await refetchUser()
+        toast.success('Profile updated successfully')
+      },
+      onError: (error: any) => {
+        toast.error('Failed to update profile')
+        console.error('Update profile error:', error)
+      },
+      onSettled: () => {
+        setIsSaving(false)
+      }
+    })
   }
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     // Validate password inputs
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      toast({
-        title: 'Missing Fields',
-        description: 'Please fill in all password fields.',
-        variant: 'destructive',
-      })
+      toast.error('Please fill in all password fields')
       return
     }
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast({
-        title: 'Password Mismatch',
-        description: 'New password and confirmation do not match.',
-        variant: 'destructive',
-      })
+      toast.error('New password and confirmation do not match')
       return
     }
 
     if (passwordData.newPassword.length < 8) {
-      toast({
-        title: 'Password Too Short',
-        description: 'New password must be at least 8 characters long.',
-        variant: 'destructive',
-      })
+      toast.error('New password must be at least 8 characters long')
       return
     }
 
+    if (changePasswordMutation.status === 'pending') return
+
     setIsChangingPassword(true)
-    
-    // Simulate API call to change password
-    setTimeout(() => {
-      setIsChangingPassword(false)
-      setPasswordData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      })
-      
-      toast({
-        title: 'Password Changed',
-        description: 'Your password has been updated successfully.',
-      })
-    }, 1500)
+    changePasswordMutation.mutate({
+      old_password: passwordData.currentPassword,
+      new_password: passwordData.newPassword
+    }, {
+      onSuccess: () => {
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        })
+        toast.success('Password changed successfully')
+      },
+      onError: (error: any) => {
+        toast.error('Failed to change password')
+        console.error('Password change error:', error)
+      },
+      onSettled: () => {
+        setIsChangingPassword(false)
+      }
+    })
   }
 
   const handleProfileImageClick = () => {
     fileInputRef.current?.click()
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0]
       
-      // Simulate image upload
-      const reader = new FileReader()
-      reader.onload = () => {
-        setUserData({
-          ...userData,
-          profileImage: reader.result as string,
-        })
-        
-        toast({
-          title: 'Profile Image Updated',
-          description: 'Your profile image has been updated successfully.',
-        })
-      }
-      reader.readAsDataURL(file)
+      // TODO: Implement profile image upload using API
+      // For now, just show a toast
+      toast.info('Profile image upload will be implemented soon')
     }
+  }
+
+  useEffect(() => {
+    if (!isLoadingUser && userData) {
+      setIsLoading(false)
+    }
+  }, [isLoadingUser, userData])
+
+  const user = userData?.results[0]
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <p className="text-lg text-muted-foreground">User data not found</p>
+      </div>
+    )
   }
 
   return (
@@ -156,9 +179,9 @@ export default function ProfilePage() {
               <div className="flex flex-col items-center space-y-4 sm:flex-row sm:items-start sm:space-x-6 sm:space-y-0">
                 <div className="relative">
                   <Avatar className="h-24 w-24 cursor-pointer" onClick={handleProfileImageClick}>
-                    <AvatarImage src={userData.profileImage} alt={`${userData.firstName} ${userData.lastName}`} />
+                    <AvatarImage src={user?.registered_face || '/placeholder.svg'} alt={`${user?.first_name} ${user?.last_name}`} />
                     <AvatarFallback className="text-2xl">
-                      {userData.firstName.charAt(0)}{userData.lastName.charAt(0)}
+                      {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div 
@@ -177,17 +200,17 @@ export default function ProfilePage() {
                 </div>
                 <div className="space-y-1 text-center sm:text-left">
                   <h3 className="text-lg font-medium">
-                    {userData.firstName} {userData.lastName}
+                    {user?.first_name} {user?.last_name}
                   </h3>
-                  <p className="text-sm text-muted-foreground">{userData.role}</p>
-                  <p className="text-sm text-muted-foreground">{userData.department}</p>
+                  <p className="text-sm text-muted-foreground">{user?.role}</p>
+                  <p className="text-sm text-muted-foreground">{user?.department?.name}</p>
                   <div className="flex items-center justify-center space-x-2 sm:justify-start">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">{userData.email}</span>
+                    <span className="text-sm text-muted-foreground">{user?.email}</span>
                   </div>
                   <div className="flex items-center justify-center space-x-2 sm:justify-start">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">{userData.phone}</span>
+                    <span className="text-sm text-muted-foreground">{user?.phone_number}</span>
                   </div>
                 </div>
               </div>
@@ -199,16 +222,24 @@ export default function ProfilePage() {
                   <Label htmlFor="firstName">First Name</Label>
                   <Input
                     id="firstName"
-                    value={userData.firstName}
-                    onChange={(e) => setUserData({ ...userData, firstName: e.target.value })}
+                    value={user?.first_name || ''}
+                    onChange={(e) => {
+                      if (userData?.results[0]) {
+                        userData.results[0].first_name = e.target.value
+                      }
+                    }}
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="lastName">Last Name</Label>
                   <Input
                     id="lastName"
-                    value={userData.lastName}
-                    onChange={(e) => setUserData({ ...userData, lastName: e.target.value })}
+                    value={user?.last_name || ''}
+                    onChange={(e) => {
+                      if (userData?.results[0]) {
+                        userData.results[0].last_name = e.target.value
+                      }
+                    }}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -216,25 +247,21 @@ export default function ProfilePage() {
                   <Input
                     id="email"
                     type="email"
-                    value={userData.email}
-                    onChange={(e) => setUserData({ ...userData, email: e.target.value })}
+                    value={user?.email || ''}
+                    disabled
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="phone">Phone</Label>
+                  <Label htmlFor="phone">Phone Number</Label>
                   <Input
                     id="phone"
-                    value={userData.phone}
-                    onChange={(e) => setUserData({ ...userData, phone: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2 sm:col-span-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    rows={4}
-                    value={userData.bio}
-                    onChange={(e) => setUserData({ ...userData, bio: e.target.value })}
+                    type="tel"
+                    value={user?.phone_number || ''}
+                    onChange={(e) => {
+                      if (userData?.results[0]) {
+                        userData.results[0].phone_number = e.target.value
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -244,25 +271,25 @@ export default function ProfilePage() {
                 {isSaving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
+                    Saving changes...
                   </>
                 ) : (
                   <>
                     <Save className="mr-2 h-4 w-4" />
-                    Save Changes
+                    Save changes
                   </>
                 )}
               </Button>
             </CardFooter>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="security" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Password</CardTitle>
+              <CardTitle>Change Password</CardTitle>
               <CardDescription>
-                Change your password to keep your account secure
+                Update your password to keep your account secure
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -299,7 +326,7 @@ export default function ProfilePage() {
                 {isChangingPassword ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Changing Password...
+                    Changing password...
                   </>
                 ) : (
                   'Change Password'
@@ -307,37 +334,8 @@ export default function ProfilePage() {
               </Button>
             </CardFooter>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Two-Factor Authentication</CardTitle>
-              <CardDescription>
-                Add an extra layer of security to your account
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <h3 className="text-sm font-medium">Authenticator App</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Use an authenticator app to generate one-time codes
-                  </p>
-                </div>
-                <Button variant="outline">Setup</Button>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <h3 className="text-sm font-medium">SMS Authentication</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Receive a code via SMS to verify your identity
-                  </p>
-                </div>
-                <Button variant="outline">Setup</Button>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
-        
+
         <TabsContent value="activity" className="space-y-4">
           <Card>
             <CardHeader>
@@ -347,86 +345,9 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-medium">Account Information</h3>
-                  <div className="mt-2 rounded-lg border p-4">
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div>
-                        <p className="text-sm font-medium">User ID</p>
-                        <p className="text-sm text-muted-foreground">{userData.id}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Role</p>
-                        <p className="text-sm text-muted-foreground capitalize">{userData.role.replace('_', ' ')}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Account Created</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(userData.accountCreated).toLocaleString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Last Login</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(userData.lastLogin).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium">Recent Login Activity</h3>
-                  <div className="mt-2 space-y-2">
-                    {[
-                      {
-                        date: '2023-11-10T08:30:45Z',
-                        ip: '192.168.1.1',
-                        location: 'Nairobi, Kenya',
-                        device: 'Chrome on Windows',
-                      },
-                      {
-                        date: '2023-11-09T14:22:30Z',
-                        ip: '192.168.1.1',
-                        location: 'Nairobi, Kenya',
-                        device: 'Safari on macOS',
-                      },
-                      {
-                        date: '2023-11-08T09:15:12Z',
-                        ip: '192.168.1.1',
-                        location: 'Nairobi, Kenya',
-                        device: 'Chrome on Windows',
-                      },
-                      {
-                        date: '2023-11-07T16:45:33Z',
-                        ip: '192.168.1.1',
-                        location: 'Nairobi, Kenya',
-                        device: 'Chrome on Windows',
-                      },
-                      {
-                        date: '2023-11-06T11:10:05Z',
-                        ip: '192.168.1.1',
-                        location: 'Nairobi, Kenya',
-                        device: 'Chrome on Windows',
-                      },
-                    ].map((activity, index) => (
-                      <div key={index} className="flex items-center justify-between rounded-lg border p-3">
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium">
-                            {new Date(activity.date).toLocaleString()}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {activity.device} • {activity.ip}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{activity.location}</p>
-                        </div>
-                        <div className="flex h-2 w-2 rounded-full bg-green-500" title="Successful login" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Activity log will be implemented in a future update
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
