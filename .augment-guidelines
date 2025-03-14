@@ -1,283 +1,82 @@
 frontend_development_guidelines:
   type_safety:
     backend_integration:
-      - match_serializer_fields:
-          - reference Django serializer fields for frontend interfaces
-          - example: CourseSerializer fields must match Course interface
-          - check nested serializer relationships (read_only vs write_only)
-      - api_response_types:
-          - use DjangoPaginatedResponse<T> for list endpoints
-          - handle ApiErrorResponse for error cases
-          - match serializer validation error structure
-      - enum_synchronization:
-          - match Django model choices with TypeScript enums
-          - example: UserRole matches backend role choices
-      - relationship_handling:
-          - use Partial<T> for nested relationships
-          - handle circular dependencies properly
-          - match many-to-many field structures
+      - match_serializer_fields
+      - api_response_types: use DjangoPaginatedResponse<T>, handle ApiErrorResponse
+      - enum_synchronization: match Django model choices
+      - relationship_handling: use Partial<T>, handle circular dependencies
 
   error_handling:
     patterns:
-      - loading_states: 
-          - use spinners for data fetching
-          - provide loading feedback messages
-          - maintain consistent loading UI patterns
-      - null_safety:
-          - use optional chaining (?.) for nested objects
-          - provide fallback values with nullish coalescing (??)
-          - handle undefined/null explicitly
-          - match backend nullable fields
-      - empty_states:
-          - show meaningful empty state messages
-          - provide context-specific guidance
-          - include recovery actions when applicable
-      - validation_errors:
-          - match Django REST framework error format
-          - handle field-specific errors
-          - display non_field_errors appropriately
+      - loading_states: spinners, feedback messages
+      - null_safety: optional chaining, nullish coalescing
+      - empty_states: meaningful messages, recovery actions
+      - validation_errors: match Django REST framework format
 
   component_patterns:
     data_display:
-      tables:
-        - handle loading state with full-width spinner row
-        - show empty state message when no data
-        - provide search feedback when filtering
-        - consistent column alignment
-        - match backend pagination structure
-      forms:
-        - disable submit during processing
-        - show validation feedback
-        - maintain form state during submissions
-        - clear form after successful submission
-        - match backend field constraints
+      tables: loading state, empty state, search feedback, pagination
+      forms: disable submit, validation feedback, maintain state
 
   api_integration:
     practices:
-      - match_endpoints:
-          - use consistent API service paths
-          - handle query parameters correctly
-          - match backend filtering options
-      - data_mutations:
-          - match create/update payload structure
-          - handle partial updates correctly
-          - validate against backend constraints
-      - authentication:
-          - handle token expiration
-          - refresh token management
-          - match backend auth requirements
+      - match_endpoints: consistent paths, query parameters
+      - data_mutations: match payload structure, partial updates
+      - authentication: token expiration, refresh management
 
   model_consistency:
-    base_models:
-      - include common fields:
-          - id: string
-          - created_at: string
-          - updated_at: string
-    relationship_fields:
-      - match foreign key structures:
-          - use Partial<T> for nested objects
-          - handle null relations
-          - match many-to-many patterns
-    field_types:
-      - match Django field types:
-          - DateTimeField: string
-          - BooleanField: boolean
-          - IntegerField: number
-          - CharField: string
-          - TextField: string
-          - JSONField: object
-          - ForeignKey: Partial<T>
-          - ManyToManyField: Partial<T>[]
+    base_models: id, created_at, updated_at
+    relationship_fields: use Partial<T>, handle null relations
+    field_types: match Django field types
 
   code_organization:
-    type_definitions:
-      - group related interfaces
-      - maintain consistent naming with backend
-      - document complex type relationships
-      - handle circular dependencies
+    type_definitions: group interfaces, consistent naming, handle circular dependencies
 
   documentation:
-    type_comments:
-      - document backend relationships
-      - note validation requirements
-      - explain complex type structures
-      - reference related backend models
+    type_comments: document relationships, validation, complex structures
 
   testing:
-    type_coverage:
-      - test API response handling
-      - validate form submissions
-      - check error handling
-      - verify relationship handling
+    type_coverage: API responses, form submissions, error handling
 
   ui_feedback:
-    toast_notifications:
-      - success messages for completed actions
-      - error messages with clear descriptions
-      - action feedback for user operations
-    
-    error_states:
-      - card-based error displays
-      - retry mechanisms
-      - clear error messages
-      - navigation fallbacks
+    toast_notifications: success, error, action feedback
+    error_states: card-based displays, retry mechanisms
 
   navigation:
-    patterns:
-      - back_buttons: include for nested routes
-      - route_guards: check required params
-      - fallback_routes: redirect on invalid states
-      - breadcrumbs: for deep navigation
+    patterns: back buttons, route guards, fallback routes, breadcrumbs
 
   data_fetching:
-    practices:
-      - handle_loading_state: true
-      - handle_error_state: true
-      - handle_empty_state: true
-      - pagination_handling: true
-      - search_integration: true
-      - type_safe_api_calls: true
-    co_location:
-      - all_data_fetching_in_page:
-          - no data fetching in components
-          - pass data as props to child components
-          - handle all loading states at page level
-          - manage error boundaries at page root
-      - state_management:
-          - keep all state at page level
-          - use props for child components
-          - avoid nested data fetching
-          - centralize refetch logic
-
-    query_patterns:
-      - parallel_queries:
-          - group related useQuery hooks
-          - handle combined loading states
-          - manage dependent data relationships
-          - share error handling
-      - pagination:
-          - manage page state at top level
-          - handle search with pagination
-          - maintain scroll position
-          - preserve filter states
-
-    loading_states:
-      unified_handling:
-        - single loading indicator for related data
-        - consistent loading UI patterns
-        - prevent partial data display
-        - maintain layout stability
-
-    error_handling:
-      centralized:
-        - single error boundary per page
-        - consistent error UI patterns
-        - unified retry mechanism
-        - clear error messages
+    practices: handle loading/error/empty states, pagination, search
+    co_location: all fetching in page, centralize state
+    query_patterns: parallel queries, pagination handling
+    loading_states: unified handling, consistent UI
+    error_handling: centralized, consistent UI, retry mechanism
 
   component_hierarchy:
     data_flow:
-      - page_level:
-          - data fetching
-          - state management
-          - error handling
-          - loading states
-      - component_level:
-          - receive data via props
-          - no direct API calls
-          - local UI state only
-          - pure rendering logic
+      page_level: fetching, state, error handling
+      component_level: receive props, local UI state only
 
   performance:
-    data_management:
-      - optimize_queries:
-          - combine related requests
-          - prevent waterfall requests
-          - handle dependent data efficiently
-      - caching:
-          - utilize React Query caching
-          - manage stale time
-          - handle cache invalidation
+    data_management: optimize queries, caching
 
   type_safety:
-    page_level_types:
-      - define_query_types:
-          - type all API responses
-          - handle loading states
-          - error type definitions
-      - prop_types:
-          - strict typing for child components
-          - avoid any type
-          - document required vs optional
+    page_level_types: define query types, strict prop typing
 
   code_structure:
-    page_organization:
-      - sections:
-          - data fetching hooks
-          - state definitions
-          - effect handlers
-          - render logic
-      - component_breakdown:
-          - clear separation of concerns
-          - logical grouping of related UI
-          - consistent prop passing
+    page_organization: sections, component breakdown
 
   example_implementation:
-    page_structure: |
-      // Data fetching at page level
-      const {
-        useFetchData: useFetchCourse,
-        useAddItem: useAddEnrollment,
-        useDeleteItem: useDeleteEnrollment,
-      } = useApi<Course, Course>(ApiService.COURSE_URL)
-
-      // Centralized loading states
-      const { data: courseData, isLoading: isLoadingCourse } = useFetchCourse(1)
-      const { data: enrollmentsData, isLoading: isLoadingEnrollments } = useFetchEnrollments(1)
-
-      // Single loading handler
-      if (isLoadingCourse || isLoadingEnrollments) {
-        return <PageLoadingState />
-      }
-
-      // Unified error handling
-      if (error) {
-        return <PageErrorState error={error} onRetry={handleRetry} />
-      }
-
-      // Pass data to components
-      return (
-        <PageLayout>
-          <CourseHeader course={courseData} />
-          <EnrollmentList 
-            enrollments={enrollmentsData}
-            onDelete={handleDeleteEnrollment}
-          />
-        </PageLayout>
-      )
+    page_structure: data fetching, loading/error handling, component rendering
+    type_parameters: useApi<T, U> usage
+    pagination_handling: internal DjangoPaginatedResponse handling
 
   documentation:
-    required_comments:
-      - data dependencies
-      - loading state handling
-      - error scenarios
-      - prop requirements
+    required_comments: dependencies, loading/error handling, props
 
-  typescript_practices:
-    - strict_type_checking
-    - proper_interface_definitions
-    - type_guards_where_needed
-    - enum_for_constants
+  typescript_practices: strict checking, proper interfaces, type guards, enums
 
-  styling_conventions:
-    - use_cn_utility: true
-    - consistent_spacing
-    - responsive_design
-    - semantic_class_names
+  styling_conventions: use cn utility, consistent spacing, responsive design
 
   component_documentation:
-    required_sections:
-      - component_purpose
-      - props_interface
-      - usage_examples
-      - edge_cases
+    required_sections: purpose, props, examples, edge cases
