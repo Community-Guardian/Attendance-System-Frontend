@@ -1,292 +1,283 @@
-# Augment Frontend Development Guidelines and Standards
+frontend_development_guidelines:
+  type_safety:
+    backend_integration:
+      - match_serializer_fields:
+          - reference Django serializer fields for frontend interfaces
+          - example: CourseSerializer fields must match Course interface
+          - check nested serializer relationships (read_only vs write_only)
+      - api_response_types:
+          - use DjangoPaginatedResponse<T> for list endpoints
+          - handle ApiErrorResponse for error cases
+          - match serializer validation error structure
+      - enum_synchronization:
+          - match Django model choices with TypeScript enums
+          - example: UserRole matches backend role choices
+      - relationship_handling:
+          - use Partial<T> for nested relationships
+          - handle circular dependencies properly
+          - match many-to-many field structures
 
-project:
-  name: attendance-system-frontend
-  type: next.js
-  framework_version: "14.1.0"
-  typescript_version: "5.0.0"
-  node_version: ">=18.0.0"
-
-architecture:
-  base_structure:
-    - app:
-        - (auth):
-            - login
-            - register
-            - forgot-password
-        - dashboard:
-            - admin
-            - lecturer
-            - student
-            - dean
-            - hod
-            - config
-        - layout.tsx
-        - page.tsx
-    - components:
-        - ui
-        - custom
-        - forms
-        - layout
-        - shared
-    - lib:
-        - utils
-        - constants
-        - types
-    - hooks:
-        - auth
-        - data
-        - ui
-    - styles:
-        - globals.css
-        - themes
-    - public:
-        - images
-        - icons
-        - fonts
-
-coding_standards:
-  components:
-    naming_conventions:
-      - components: "PascalCase"
-      - hooks: "camelCase with use prefix"
-      - utils: "camelCase"
-      - constants: "UPPER_SNAKE_CASE"
-      - types: "PascalCase"
-    
-    structure_rules:
-      - use_client_directive: true
-      - props_interface: true
-      - default_export: true
-      - component_documentation: true
-    
-    component_template: |
-      'use client'
-      
-      interface ComponentProps {
-        // props definition
-      }
-      
-      export default function Component({ prop1, prop2 }: ComponentProps) {
-        return (
-          // JSX
-        )
-      }
-
-  styling:
-    framework: "tailwindcss"
-    configuration:
-      - use_css_variables: true
-      - theme_customization: true
-      - responsive_design: true
-      - dark_mode: true
-    
-    class_naming:
-      - use_meaningful_names: true
-      - follow_bem_like_structure: true
-      - prefer_utility_classes: true
-
-  state_management:
-    local_state:
-      - use_react_hooks: true
-      - prefer_controlled_components: true
-    
-    global_state:
-      - use_context: true
-      - use_reducers: true
-      - use_tanstack_query: true
-
-  forms:
-    library: "react-hook-form"
-    validation: "zod"
-    rules:
-      - use_form_components: true
-      - implement_validation: true
-      - handle_errors: true
-      - show_loading_states: true
-
-api_integration:
-  base_configuration:
-    client: "axios"
-    base_url: "process.env.NEXT_PUBLIC_API_URL"
-    timeout: 30000
-    
-  interceptors:
-    request:
-      - auth_token
-      - content_type
-    response:
-      - error_handling
-      - data_transformation
-  
   error_handling:
-    - network_errors
-    - validation_errors
-    - authentication_errors
-    - server_errors
+    patterns:
+      - loading_states: 
+          - use spinners for data fetching
+          - provide loading feedback messages
+          - maintain consistent loading UI patterns
+      - null_safety:
+          - use optional chaining (?.) for nested objects
+          - provide fallback values with nullish coalescing (??)
+          - handle undefined/null explicitly
+          - match backend nullable fields
+      - empty_states:
+          - show meaningful empty state messages
+          - provide context-specific guidance
+          - include recovery actions when applicable
+      - validation_errors:
+          - match Django REST framework error format
+          - handle field-specific errors
+          - display non_field_errors appropriately
 
-authentication:
-  strategy: "JWT"
-  storage: "cookies"
-  settings:
-    token_name: "auth_token"
-    refresh_token_name: "refresh_token"
-    secure: true
-    http_only: true
-  
-  protected_routes:
-    - check_auth: true
-    - redirect_unauthorized: true
+  component_patterns:
+    data_display:
+      tables:
+        - handle loading state with full-width spinner row
+        - show empty state message when no data
+        - provide search feedback when filtering
+        - consistent column alignment
+        - match backend pagination structure
+      forms:
+        - disable submit during processing
+        - show validation feedback
+        - maintain form state during submissions
+        - clear form after successful submission
+        - match backend field constraints
 
-ui_components:
-  design_system: "shadcn/ui"
-  required_components:
-    - Button
-    - Input
-    - Form
-    - Dialog
-    - Toast
-    - Card
-    - Table
-    - Tabs
-    - Select
-    - DatePicker
+  api_integration:
+    practices:
+      - match_endpoints:
+          - use consistent API service paths
+          - handle query parameters correctly
+          - match backend filtering options
+      - data_mutations:
+          - match create/update payload structure
+          - handle partial updates correctly
+          - validate against backend constraints
+      - authentication:
+          - handle token expiration
+          - refresh token management
+          - match backend auth requirements
 
-responsive_design:
-  breakpoints:
-    - sm: "640px"
-    - md: "768px"
-    - lg: "1024px"
-    - xl: "1280px"
-    - "2xl": "1536px"
-  
-  mobile_first: true
-  responsive_images: true
+  model_consistency:
+    base_models:
+      - include common fields:
+          - id: string
+          - created_at: string
+          - updated_at: string
+    relationship_fields:
+      - match foreign key structures:
+          - use Partial<T> for nested objects
+          - handle null relations
+          - match many-to-many patterns
+    field_types:
+      - match Django field types:
+          - DateTimeField: string
+          - BooleanField: boolean
+          - IntegerField: number
+          - CharField: string
+          - TextField: string
+          - JSONField: object
+          - ForeignKey: Partial<T>
+          - ManyToManyField: Partial<T>[]
 
-performance:
-  optimization:
-    - image_optimization: true
-    - code_splitting: true
-    - lazy_loading: true
-    - caching_strategy: true
-  
-  metrics:
-    - first_contentful_paint: "<1s"
-    - largest_contentful_paint: "<2.5s"
-    - time_to_interactive: "<3.5s"
+  code_organization:
+    type_definitions:
+      - group related interfaces
+      - maintain consistent naming with backend
+      - document complex type relationships
+      - handle circular dependencies
 
-accessibility:
-  requirements:
-    - aria_labels: true
-    - semantic_html: true
-    - keyboard_navigation: true
-    - color_contrast: true
-    - screen_reader_support: true
+  documentation:
+    type_comments:
+      - document backend relationships
+      - note validation requirements
+      - explain complex type structures
+      - reference related backend models
 
-testing:
-  frameworks:
-    - jest
-    - react-testing-library
-    - cypress
-  
-  coverage:
-    minimum: 80%
-  
-  required_tests:
-    - components
-    - hooks
-    - utils
-    - integration
+  testing:
+    type_coverage:
+      - test API response handling
+      - validate form submissions
+      - check error handling
+      - verify relationship handling
 
-documentation:
-  components:
-    - props
-    - usage_examples
-    - accessibility
-    - storybook
-  
-  code:
-    - comments
-    - type_definitions
-    - jsdoc
-
-dependencies:
-  required:
-    ui:
-      - "@radix-ui/react-*": "latest"
-      - "class-variance-authority": "latest"
-      - "tailwind-merge": "latest"
-      - "clsx": "latest"
+  ui_feedback:
+    toast_notifications:
+      - success messages for completed actions
+      - error messages with clear descriptions
+      - action feedback for user operations
     
-    forms:
-      - "react-hook-form": "latest"
-      - "@hookform/resolvers": "latest"
-      - "zod": "latest"
-    
-    data:
-      - "@tanstack/react-query": "latest"
-      - "axios": "latest"
-    
-    utils:
-      - "date-fns": "latest"
-      - "js-cookie": "latest"
-      - "jwt-decode": "latest"
+    error_states:
+      - card-based error displays
+      - retry mechanisms
+      - clear error messages
+      - navigation fallbacks
 
-development:
-  tools:
-    - eslint
-    - prettier
-    - typescript
-    - husky
-    - lint-staged
-  
-  settings:
-    prettier:
-      semi: false
-      singleQuote: true
-      tabWidth: 2
-    
-    typescript:
-      strict: true
-      noImplicitAny: true
+  navigation:
+    patterns:
+      - back_buttons: include for nested routes
+      - route_guards: check required params
+      - fallback_routes: redirect on invalid states
+      - breadcrumbs: for deep navigation
 
-deployment:
-  required_files:
-    - .env.example
-    - Dockerfile
-    - docker-compose.yml
-    - nginx.conf
-  
-  environment_variables:
-    required:
-      - NEXT_PUBLIC_API_URL
-      - NEXT_PUBLIC_SITE_URL
-      - NEXT_PUBLIC_GA_ID
+  data_fetching:
+    practices:
+      - handle_loading_state: true
+      - handle_error_state: true
+      - handle_empty_state: true
+      - pagination_handling: true
+      - search_integration: true
+      - type_safe_api_calls: true
+    co_location:
+      - all_data_fetching_in_page:
+          - no data fetching in components
+          - pass data as props to child components
+          - handle all loading states at page level
+          - manage error boundaries at page root
+      - state_management:
+          - keep all state at page level
+          - use props for child components
+          - avoid nested data fetching
+          - centralize refetch logic
 
-git:
-  branch_naming:
-    format: "<type>/<description>"
-    types:
-      - feature
-      - bugfix
-      - hotfix
-      - release
-  
-  commit_messages:
-    format: "<type>: <description>"
-    types:
-      - feat
-      - fix
-      - docs
-      - style
-      - refactor
-      - test
-      - chore
+    query_patterns:
+      - parallel_queries:
+          - group related useQuery hooks
+          - handle combined loading states
+          - manage dependent data relationships
+          - share error handling
+      - pagination:
+          - manage page state at top level
+          - handle search with pagination
+          - maintain scroll position
+          - preserve filter states
 
-security:
-  requirements:
-    - csrf_protection: true
-    - xss_prevention: true
-    - content_security_policy: true
-    - secure_headers: true
-    - input_sanitization: true
+    loading_states:
+      unified_handling:
+        - single loading indicator for related data
+        - consistent loading UI patterns
+        - prevent partial data display
+        - maintain layout stability
+
+    error_handling:
+      centralized:
+        - single error boundary per page
+        - consistent error UI patterns
+        - unified retry mechanism
+        - clear error messages
+
+  component_hierarchy:
+    data_flow:
+      - page_level:
+          - data fetching
+          - state management
+          - error handling
+          - loading states
+      - component_level:
+          - receive data via props
+          - no direct API calls
+          - local UI state only
+          - pure rendering logic
+
+  performance:
+    data_management:
+      - optimize_queries:
+          - combine related requests
+          - prevent waterfall requests
+          - handle dependent data efficiently
+      - caching:
+          - utilize React Query caching
+          - manage stale time
+          - handle cache invalidation
+
+  type_safety:
+    page_level_types:
+      - define_query_types:
+          - type all API responses
+          - handle loading states
+          - error type definitions
+      - prop_types:
+          - strict typing for child components
+          - avoid any type
+          - document required vs optional
+
+  code_structure:
+    page_organization:
+      - sections:
+          - data fetching hooks
+          - state definitions
+          - effect handlers
+          - render logic
+      - component_breakdown:
+          - clear separation of concerns
+          - logical grouping of related UI
+          - consistent prop passing
+
+  example_implementation:
+    page_structure: |
+      // Data fetching at page level
+      const {
+        useFetchData: useFetchCourse,
+        useAddItem: useAddEnrollment,
+        useDeleteItem: useDeleteEnrollment,
+      } = useApi<Course, Course>(ApiService.COURSE_URL)
+
+      // Centralized loading states
+      const { data: courseData, isLoading: isLoadingCourse } = useFetchCourse(1)
+      const { data: enrollmentsData, isLoading: isLoadingEnrollments } = useFetchEnrollments(1)
+
+      // Single loading handler
+      if (isLoadingCourse || isLoadingEnrollments) {
+        return <PageLoadingState />
+      }
+
+      // Unified error handling
+      if (error) {
+        return <PageErrorState error={error} onRetry={handleRetry} />
+      }
+
+      // Pass data to components
+      return (
+        <PageLayout>
+          <CourseHeader course={courseData} />
+          <EnrollmentList 
+            enrollments={enrollmentsData}
+            onDelete={handleDeleteEnrollment}
+          />
+        </PageLayout>
+      )
+
+  documentation:
+    required_comments:
+      - data dependencies
+      - loading state handling
+      - error scenarios
+      - prop requirements
+
+  typescript_practices:
+    - strict_type_checking
+    - proper_interface_definitions
+    - type_guards_where_needed
+    - enum_for_constants
+
+  styling_conventions:
+    - use_cn_utility: true
+    - consistent_spacing
+    - responsive_design
+    - semantic_class_names
+
+  component_documentation:
+    required_sections:
+      - component_purpose
+      - props_interface
+      - usage_examples
+      - edge_cases

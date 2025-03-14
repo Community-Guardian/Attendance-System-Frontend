@@ -39,7 +39,7 @@ export function useApi<T, U>(url: string, pageSize: number = 10) {
       queryKey: [url, id, params],
       queryFn: async () => {
         const queryString = buildQueryString(params);
-        const response = await api.get<U>(`${url}/${id}/${queryString}`);
+        const response = await api.get<U>(`${url}${id}/${queryString}`);
         return response.data;
       },
       enabled: !!id, // Only fetch if ID exists
@@ -60,7 +60,7 @@ export function useApi<T, U>(url: string, pageSize: number = 10) {
   // Update Item (Uses Direct Object Response)
   const useUpdateItem = useMutation<U, AxiosError<ApiErrorResponse>, { id: string | number; item: Partial<U> }>({
     mutationFn: async ({ id, item }) => {
-      const response = await api.patch<U>(`${url}/${id}/`, item);
+      const response = await api.patch<U>(`${url}${id}/`, item);
       return response.data;
     },
     onSuccess: () => {
@@ -71,7 +71,7 @@ export function useApi<T, U>(url: string, pageSize: number = 10) {
   // Delete Item
   const useDeleteItem = useMutation<void, AxiosError<ApiErrorResponse>, string | number>({
     mutationFn: async (id) => {
-      await api.delete(`${url}/${id}/`);
+      await api.delete(`${url}${id}/`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [url] });

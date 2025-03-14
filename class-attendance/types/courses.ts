@@ -5,10 +5,14 @@ export interface Course {
   id: string;
   name: string;
   code: string;
-  department: Partial<Department>; // Department ID
-  programmes: Partial<Programme>[]; // Array of Programme IDs
-  lecturers: Partial<User>[]; // Array of CustomUser IDs
-  students: Partial<User>[]; // Array of CustomUser IDs
+  department: Partial<Department>;
+  programmes: Partial<Programme>[];
+  lecturers: Partial<User>[];
+  students: Partial<User>[];
+  prerequisites: Partial<Course>[];  // Add this line if missing
+  description?: string;
+  active_enrollments_count?: number;
+  total_enrollments_count?: number;
 }
 
 export interface Enrollment {
@@ -16,4 +20,7 @@ export interface Enrollment {
   class_group: string; // ClassGroup ID
   course: Partial<Course>; // Course ID
   student: Partial<User>; // CustomUser ID
+  lecturer: Partial<User>; // CustomUser ID
+  semester: string; // Semester ID
+  is_active: boolean;
 }

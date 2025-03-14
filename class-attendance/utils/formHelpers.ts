@@ -1,48 +1,64 @@
-import { toast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
-export const handleFormError = (error: any) => {
-  if (error instanceof Error) {
-    toast({
-      title: "Error",
-      description: error.message,
-      variant: "destructive",
-    })
-  } else if (typeof error === "object" && error !== null) {
-    const errorFields = [
-      "contact_number",
-      "next_of_kin",
-      "full_name",
-      "id_number",
-      "kra_pin",
-      "date_of_birth",
-      "marital_status",
-      "gender",
-      "identity_type",
-      "employment_status",
-      "country",
-      "county",
-      "town",
-    ]
+interface ApiError {
+  detail?: string;
+  [key: string]: any;
+}
 
-    for (const field of errorFields) {
-      if (error[field] && error[field][0]) {
-        toast({
-          title:
-            field === "next_of_kin"
-              ? "Next Of Kin Phone Number"
-              : field.replace("_", " ").charAt(0).toUpperCase() + field.slice(1),
-          description: field === "next_of_kin" ? error[field][0].contact_number[0] : error[field][0],
-          variant: "destructive",
-        })
-        return
-      }
-    }
+export const handleApiError = (error: any, customMessage?: string) => {
+  // Network or axios cancellation errors
+  if (!error.response) {
+    toast.error(error.message || 'Network error occurred');
+    return;
   }
 
-  toast({
-    title: "Error",
-    description: "Something went wrong",
-    variant: "destructive",
-  })
+  const { status, data } = error.response;
+
+  // Handle different HTTP status codes
+  switch (status) {
+    case 400:
+      // Handle validation errors
+      if (typeof data === 'object') {
+        Object.entries(data).forEach(([key, value]) => {
+          const message = Array.isArray(value) ? value[0] : value;
+          toast.error(`${key}: ${message}`);
+        });
+      } else {
+        toast.error(customMessage || data.detail || 'Invalid request');
+      }
+      break;
+
+    case 401:
+      toast.error('Session expired. Please login again');
+      // You might want to trigger a logout or redirect here
+      break;
+
+    case 403:
+      toast.error('You do not have permission to perform this action');
+      break;
+
+    case 404:
+      toast.error(customMessage || 'Resource not found');
+      break;
+
+    case 429:
+      toast.error('Too many requests. Please try again later');
+      break;
+
+    case 500:
+      toast.error('Server error occurred. Please try again later');
+      break;
+
+    default:
+      toast.error(customMessage || data.detail || 'An unexpected error occurred');
+  }
+
+  // Log error for debugging
+  console.error('API Error:', {
+    status,
+    data,
+    endpoint: error.config?.url,
+    method: error.config?.method
+  });
 }
 
