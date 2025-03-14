@@ -34,10 +34,33 @@ import { Pagination } from '@/components/ui/pagination'
 import { ApiErrorResponse, User, DjangoPaginatedResponse, UserRole } from '@/types'
 import ApiService from '@/handler/ApiService'
 import authManager from '@/handler/AuthManager'
+import * as XLSX from 'xlsx';
 
-interface ImportResult {
+interface ImportResponse {
   created_users: User[];
-  errors: string[];
+  errors: Array<{
+    data: {
+      email: string;
+      role: string;
+      first_name: string;
+      last_name: string;
+      password1?: string;
+      password2?: string;
+    };
+    errors: {
+      [key: string]: string[];
+    };
+  }>;
+}
+
+interface UserImportData {
+  email: string;
+  role: UserRole;
+  first_name: string;
+  last_name: string;
+  phone_number?: string;
+  student_id?: string;
+  employee_id?: string;
 }
 
 const ROLES: UserRole[] = ['student', 'lecturer', 'hod', 'dean', 'config_user', 'admin']
@@ -74,19 +97,24 @@ export default function UserManagementPage() {
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery)
       setPage(1) // Reset to first page when search changes
+      setDebouncedSearch(searchQuery)
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [searchQuery])
+  }, [searchQuery,selectedRole])
 
   // API hooks
-  const { useFetchData, useAddItem, useUpdateItem, useDeleteItem } = useApi<DjangoPaginatedResponse<User>>(ApiService.USER_URL,pageSize)
+  const { useFetchData, useAddItem, useUpdateItem, useDeleteItem, } = useApi<User, User>(ApiService.USER_URL, pageSize)
   
+  // For bulk actions
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+
   // Fetch users with filters
-  const { data: usersData, isLoading, refetch } = useFetchData(page, {
-    search: debouncedSearch,
+  const { data: usersData, isLoading : isLoadingUsers, refetch } = useFetchData(page, {
+    email: debouncedSearch,
     role: selectedRole === 'all' ? '' : selectedRole,
     all:true,
   })
@@ -113,7 +141,7 @@ export default function UserManagementPage() {
         toast.success('User created successfully')
       },
       onError: (error) => {
-        toast.error(error.response?.data?.message || 'Failed to create user')
+        toast.error(error.message || 'Failed to create user')
       }
     })
   }
@@ -130,7 +158,7 @@ export default function UserManagementPage() {
         toast.success('User updated successfully')
       },
       onError: (error) => {
-        toast.error(error.response?.data?.message || 'Failed to update user')
+        toast.error(error.message || 'Failed to update user')
       }
     })
   }
@@ -142,7 +170,7 @@ export default function UserManagementPage() {
           toast.success('User deleted successfully')
         },
         onError: (error) => {
-          toast.error(error.response?.data?.message || 'Failed to delete user')
+          toast.error(error.message|| 'Failed to delete user')
         }
       })
     }
@@ -150,6 +178,7 @@ export default function UserManagementPage() {
 
   const handleBulkDelete = () => {
     if (confirm(`Are you sure you want to delete ${selectedUsers.length} users?`)) {
+      setIsBulkProcessing(true)
       Promise.all(selectedUsers.map(id => deleteUser(id)))
         .then(() => {
           setSelectedUsers([])
@@ -158,13 +187,17 @@ export default function UserManagementPage() {
         .catch((error) => {
           toast.error('Failed to delete some users')
         })
+        .finally(() => {
+          setIsBulkProcessing(false)
+        })
     }
   }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      if (file.type !== 'application/json' && !file.type.includes('spreadsheet')) {
+      const fileType = file.name.split('.').pop()?.toLowerCase()
+      if (fileType !== 'json' && fileType !== 'xlsx' && fileType !== 'xls') {
         toast.error('Please upload a JSON or Excel file')
         return
       }
@@ -172,45 +205,146 @@ export default function UserManagementPage() {
     }
   }
 
+  const parseExcelFile = (file: File): Promise<UserImportData[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const data = e.target?.result
+          const workbook = XLSX.read(data, { type: 'binary' })
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+          const records = XLSX.utils.sheet_to_json(firstSheet)
+          
+          const users = records.map((record: any) => ({
+            email: record.email,
+            role: record.role?.toLowerCase() || 'student',
+            first_name: record.first_name || record.firstName || '',
+            last_name: record.last_name || record.lastName || '',
+            phone_number: record.phone_number || record.phoneNumber || '',
+            student_id: record.student_id || record.studentId || '',
+            employee_id: record.employee_id || record.employeeId || ''
+          }))
+          
+          resolve(users)
+        } catch (error) {
+          reject(new Error('Failed to parse Excel file'))
+        }
+      }
+      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.readAsBinaryString(file)
+    })
+  }
+
+  const parseJSONFile = (file: File): Promise<UserImportData[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const users = JSON.parse(e.target?.result as string)
+          if (!Array.isArray(users)) {
+            reject(new Error('JSON file must contain an array of users'))
+            return
+          }
+          resolve(users)
+        } catch (error) {
+          reject(new Error('Failed to parse JSON file'))
+        }
+      }
+      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.readAsText(file)
+    })
+  }
+
+  const validateUsers = (users: UserImportData[]): string[] => {
+    const errors: string[] = []
+    
+    users.forEach((user, index) => {
+      if (!user.email) errors.push(`Row ${index + 1}: Email is required`)
+      if (!ROLES.includes(user.role)) errors.push(`Row ${index + 1}: Invalid role`)
+      if (!user.first_name) errors.push(`Row ${index + 1}: First name is required`)
+      if (!user.last_name) errors.push(`Row ${index + 1}: Last name is required`)
+    })
+    
+    return errors
+  }
+
   const handleImportUsers = async () => {
-    if (!importFile) return
+    if (!importFile) return;
 
+    setIsImporting(true);
     try {
-      setIsProcessing(true)
-      const formData = new FormData()
-      formData.append('file', importFile)
-      
-      const result: ImportResult = await authManager.massRegister(formData)
-      
-      if (result.created_users.length > 0) {
-        toast.success(`Successfully created ${result.created_users.length} users`)
-        refetch()
+      const users = await (importFile.name.toLowerCase().endsWith('.json') 
+        ? parseJSONFile(importFile) 
+        : parseExcelFile(importFile));
+
+      // Use AuthManager's mass register instead of direct API call
+      const response = await authManager.massRegister(users);
+
+      // Handle successful creations
+      if (response.created_users.length > 0) {
+        toast.success(`Successfully created ${response.created_users.length} users`);
       }
 
-      if (result.errors.length > 0) {
-        toast.error(`${result.errors.length} users could not be created`)
-        console.error('Import errors:', result.errors)
+      // Handle errors
+      if (response.errors.length > 0) {
+        const errorMessages = response.errors.map((error : any) => 
+          `Failed to create user ${error.data.email}: ${Object.values(error.errors).flat().join(', ')}`
+        );
+        
+        toast.error(`Failed to create ${response.errors.length} users. Check console for details.`);
+        console.error('User creation errors:', errorMessages);
       }
 
-      setShowImportDialog(false)
-      setImportFile(null)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
+      // Reset form and refresh data
+      setImportFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setShowImportDialog(false);
+      refetch();
+
     } catch (error) {
-      toast.error('Failed to import users')
-      console.error('Import error:', error)
+      toast.error('Failed to import users');
+      console.error('Import error:', error);
     } finally {
-      setIsProcessing(false)
+      setIsImporting(false);
     }
   }
 
   const handleExportUsers = async () => {
+    setIsExporting(true)
     try {
-      // Implement export logic here
+      const { data: usersData } = await useFetchData(1, { 
+        page_size: 1000,
+        all: true 
+      })
+
+      if (!usersData?.results) {
+        throw new Error('No users data available')
+      }
+
+      const exportData = usersData.results.map((user: User) => ({
+        'Email': user.email,
+        'First Name': user.first_name,
+        'Last Name': user.last_name,
+        'Role': user.role,
+        'Phone Number': user.phone_number || '',
+        'Student ID': user.student_id || '',
+        'Employee ID': user.employee_id || '',
+        'Status': user.is_verified ? 'Verified' : 'Pending'
+      }))
+
+      const workbook = XLSX.utils.book_new()
+      const worksheet = XLSX.utils.json_to_sheet(exportData)
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Users')
+      
+      const fileName = `users_export_${new Date().toISOString().split('T')[0]}.xlsx`
+      XLSX.writeFile(workbook, fileName)
+      
       toast.success('Users exported successfully')
     } catch (error) {
+      console.error('Export error:', error)
       toast.error('Failed to export users')
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -222,7 +356,7 @@ export default function UserManagementPage() {
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search users..."
+              placeholder="Search users using email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 w-[300px]"
@@ -246,17 +380,57 @@ export default function UserManagementPage() {
           </Select>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" onClick={() => setShowImportDialog(true)}>
-            <Upload className="mr-2 h-4 w-4" />
-            Import
+          <Button
+            variant="outline"
+            onClick={() => setShowImportDialog(true)}
+            disabled={isImporting}
+          >
+            {isImporting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Importing...
+              </>
+            ) : (
+              <>
+                <Download className="mr-2 h-4 w-4" />
+                Import
+              </>
+            )}
           </Button>
-          <Button variant="outline" onClick={handleExportUsers}>
-            <Download className="mr-2 h-4 w-4" />
-            Export
+          <Button
+            variant="outline"
+            onClick={handleExportUsers}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Export
+              </>
+            )}
           </Button>
           {selectedUsers.length > 0 && (
-            <Button variant="destructive" onClick={handleBulkDelete}>
-              Delete Selected ({selectedUsers.length})
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              disabled={isBulkProcessing}
+            >
+              {isBulkProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Selected ({selectedUsers.length})
+                </>
+              )}
             </Button>
           )}
           <Button onClick={() => setShowAddDialog(true)}>
@@ -292,7 +466,7 @@ export default function UserManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {isLoadingUsers ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center">
                     <Loader2 className="h-8 w-8 animate-spin mx-auto" />
@@ -417,29 +591,39 @@ export default function UserManagementPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Import Users</DialogTitle>
-            <DialogDescription>
-              Upload a JSON or Excel file containing user data
+            <DialogDescription asChild>
+              <div className="space-y-2">
+                <span>Upload a JSON or Excel file containing user data.</span>
+                <div className="mt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open('/templates/user_import_template.xlsx')}
+                    className="text-xs"
+                  >
+                    Download Template
+                  </Button>
+                </div>
+              </div>
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              ref={fileInputRef}
-              type="file"
-              accept=".json,.xlsx,.xls"
-              onChange={handleFileSelect}
-            />
-            {importFile && (
-              <p className="text-sm text-muted-foreground">
-                Selected file: {importFile.name}
-              </p>
-            )}
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="file">File</Label>
+              <Input
+                id="file"
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept=".json,.xlsx,.xls"
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowImportDialog(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleImportUsers}
+            <Button 
+              onClick={handleImportUsers} 
               disabled={!importFile || isProcessing}
             >
               {isProcessing ? (

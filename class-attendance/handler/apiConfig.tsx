@@ -23,7 +23,7 @@ export const TOKEN_REFRESH_URL = `${BASE_URL}/token/refresh/`; // Duplicate - co
 // User Management
 export const USER_URL = `${BASE_URL}/api/users/`;
 export const CUSTOM_USER_URL = `${BASE_URL}/api/users/`; // Duplicate - consider removing
-export const MASS_REGISTER_URL = `${BASE_URL}/users/mass_register/`;
+export const MASS_REGISTER_URL = `${BASE_URL}/api/users/mass_register/`;
 
 // ==========================================
 // Attendance Management Endpoints

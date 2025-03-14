@@ -1,17 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { api } from "@/utils/api";
+import { DjangoPaginatedResponse,ApiErrorResponse } from "@/types";
 
-interface ApiErrorResponse {
-  detail?: string;
-  [key: string]: unknown;
-}
-
-export function useApi<T>(url: string, pageSize: number = 10) {
+export function useApi<T, U>(url: string, pageSize: number = 10) {
   const queryClient = useQueryClient();
 
   // Utility function to build query string
-  const buildQueryString = (params?: Record<string, number|string|boolean>) => {
+  const buildQueryString = (params?: Record<string, number | string | boolean>) => {
     const searchParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -24,12 +20,12 @@ export function useApi<T>(url: string, pageSize: number = 10) {
   };
 
   // Fetch Paginated Data (Supports Django Pagination)
-  const useFetchData = (page: number, params?: Record<string, number|string|boolean>) => {
-    return useQuery<T, AxiosError<ApiErrorResponse>>({
+  const useFetchData = (page: number, params?: Record<string, number | string | boolean>) => {
+    return useQuery<DjangoPaginatedResponse<T>, AxiosError<ApiErrorResponse>>({
       queryKey: [url, page, pageSize, params],
       queryFn: async () => {
         const queryString = buildQueryString({ ...params, page, page_size: pageSize });
-        const response = await api.get<T>(`${url}${queryString}`);
+        const response = await api.get<DjangoPaginatedResponse<T>>(`${url}${queryString}`);
         return response.data;
       },
       placeholderData: (previousData) => previousData, // Keeps previous data while fetching new
@@ -37,23 +33,23 @@ export function useApi<T>(url: string, pageSize: number = 10) {
     });
   };
 
-  // Fetch a Single Item by ID
-  const useFetchById = (id: string | number, params?: Record<string, number|string|boolean>) => {
-    return useQuery<T, AxiosError<ApiErrorResponse>>({
+  // Fetch a Single Item by ID (Returns Direct Object)
+  const useFetchById = (id: string | number, params?: Record<string, number | string | boolean>) => {
+    return useQuery<U, AxiosError<ApiErrorResponse>>({
       queryKey: [url, id, params],
       queryFn: async () => {
         const queryString = buildQueryString(params);
-        const response = await api.get<T>(`${url}/${id}/${queryString}`);
+        const response = await api.get<U>(`${url}/${id}/${queryString}`);
         return response.data;
       },
       enabled: !!id, // Only fetch if ID exists
     });
   };
 
-  // Add Item
-  const useAddItem = useMutation<T, AxiosError<ApiErrorResponse>, Partial<T>>({
+  // Add Item (Uses Direct Object Response)
+  const useAddItem = useMutation<U, AxiosError<ApiErrorResponse>, Partial<U>>({
     mutationFn: async (item) => {
-      const response = await api.post<T>(url, item);
+      const response = await api.post<U>(url, item);
       return response.data;
     },
     onSuccess: () => {
@@ -61,10 +57,10 @@ export function useApi<T>(url: string, pageSize: number = 10) {
     },
   });
 
-  // Update Item
-  const useUpdateItem = useMutation<T, AxiosError<ApiErrorResponse>, { id: string | number; item: Partial<T> }>({
+  // Update Item (Uses Direct Object Response)
+  const useUpdateItem = useMutation<U, AxiosError<ApiErrorResponse>, { id: string | number; item: Partial<U> }>({
     mutationFn: async ({ id, item }) => {
-      const response = await api.patch<T>(`${url}/${id}/`, item);
+      const response = await api.patch<U>(`${url}/${id}/`, item);
       return response.data;
     },
     onSuccess: () => {

@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation"
 import Cookies from "js-cookie"
 import { useApi } from "@/hooks/useApi"
 import ApiService from "@/handler/ApiService"
-import { User,DjangoPaginatedResponse, userRole } from "@/types"
+import { User, UserRole } from "@/types"
 import { toast } from "sonner"
 
 export default function DashboardLayout({
@@ -24,7 +24,7 @@ export default function DashboardLayout({
     toast.error('Session is not valid.')
     router.replace('/login')
   }
-  const { useFetchData } = useApi<DjangoPaginatedResponse<User>>(ApiService.USER_URL)
+  const { useFetchData } = useApi<User, User>(ApiService.USER_URL)
   const { data:user,isFetched,error } = useFetchData(1)
   if(!isFetched && !user?.results && !user?.results[0].role){
     return <FullPageLoader message="Loading ..." />
@@ -37,7 +37,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <DashboardSidebar userRole={user?.results[0].role as userRole} />
+      <DashboardSidebar userRole={user?.results[0].role as UserRole} />
       <SidebarInset>
         <header className="flex h-16 items-center gap-4 border-b bg-background px-6">
           <SidebarTrigger />
