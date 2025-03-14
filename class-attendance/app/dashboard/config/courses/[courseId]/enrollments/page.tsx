@@ -397,6 +397,29 @@ export default function CourseEnrollmentPage() {
             </Dialog>
           </div>
 
+          {/* Add loading state */}
+          {isLoadingEnrollments && (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+            </div>
+          )}
+
+          {/* Add error state */}
+          {enrollmentsError && (
+            <div className="text-center text-destructive py-8">
+              Failed to load enrollments. Please try again.
+            </div>
+          )}
+
+          {/* Show no results message */}
+          {!isLoadingEnrollments && enrollmentsData?.results.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              {debouncedSearch 
+                ? "No enrollments match your search criteria" 
+                : "No enrollments found for this course"}
+            </div>
+          )}
+
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -418,18 +441,12 @@ export default function CourseEnrollmentPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : enrollmentsError ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-destructive">
-                      Failed to load enrollments. Please try again.
-                    </TableCell>
-                  </TableRow>
                 ) : enrollments.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <p>No enrollments found</p>
-                        {debouncedSearch && (
+                        {searchQuery && (
                           <p className="text-sm">
                             Try adjusting your search query
                           </p>

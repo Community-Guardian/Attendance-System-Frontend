@@ -1,7 +1,7 @@
 import { LOGIN_URL, BASE_URL, REGISTER_URL, REFRESH_TOKEN_URL, USER_URL, LOGOUT_URL, CHANGE_PASSWORD_URL, RESEND_EMAIL_URL, RESET_PASSWORD_URL, VERIFY_TOKEN_URL, MASS_REGISTER_URL } from '@/handler/apiConfig';
 import { api, handleApiError } from '@/utils/api';
 import axios, { AxiosError, AxiosResponse, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
-import { User } from '@/types';
+import { User, ApiErrorResponse } from '@/types';
 import Cookies from 'js-cookie'; // Import js-cookie
 import { promises } from 'dns';
 
@@ -9,11 +9,6 @@ export interface AuthResponse {
   access: string;
   refresh: string;
   user: Partial<User>;
-}
-
-interface ApiErrorResponse {
-  detail?: string;
-  [key: string]: unknown;
 }
 
 export const apiPlain = axios.create({
