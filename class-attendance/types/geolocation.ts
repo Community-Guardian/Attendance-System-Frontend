@@ -5,12 +5,15 @@
 export interface GeolocationZone {
   id: string;
   name: string;
-  coordinates: string; // GeoJSON format
+  coordinates: Coordinates[]; // GeoJSON format
   capacity: number;
   radius: number;
   is_active: boolean;
 }
-
+export interface Coordinates{
+  lat: number;
+  lon: number;
+}
 export interface GeolocationCheckRequest {
   latitude: number;
   longitude: number;

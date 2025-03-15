@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosResponse, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import Cookies from 'js-cookie'; // Import js-cookie
-import { BASE_URL, REFRESH_TOKEN_URL } from '@/handler/apiConfig';
+import { BASE_URL, TOKEN_REFRESH_URL } from '@/handler/apiConfig';
 
 interface ApiErrorResponse {
     detail?: string;
@@ -78,7 +78,7 @@ api.interceptors.request.use(
             if (!isRefreshing) {
                 isRefreshing = true;
                 try {
-                    const response = await axios.post<AuthResponse>(REFRESH_TOKEN_URL, { refresh: refreshToken }, { withCredentials: true });
+                    const response = await axios.post<AuthResponse>(TOKEN_REFRESH_URL, { refresh: refreshToken }, { withCredentials: true });
 
                     if (response.status === 200) {
                         accessToken = response.data.access;
@@ -137,7 +137,7 @@ api.interceptors.response.use(
             }
 
             try {
-                const response = await axios.post<AuthResponse>(REFRESH_TOKEN_URL, { refresh: refreshToken }, { withCredentials: true });
+                const response = await axios.post<AuthResponse>(TOKEN_REFRESH_URL, { refresh: refreshToken }, { withCredentials: true });
 
                 if (response.status === 200) {
                     const newAccessToken = response.data.access;

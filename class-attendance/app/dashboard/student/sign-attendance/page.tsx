@@ -2,14 +2,16 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Camera, Check, Loader2, MapPin, X } from "lucide-react"
-import { MapContainer, TileLayer, Circle, Marker, Popup } from "react-leaflet"
+import { MapContainer, TileLayer, Circle, Marker, Popup, useMap, useMapEvents, Polygon } from "react-leaflet"
 import "leaflet/dist/leaflet.css"
 import L from "leaflet"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast } from "@/hooks/use-toast"
-import type { AttendanceSession } from "@/types"
+import { useApi } from "@/hooks/useApi"
+import ApiService from "@/handler/ApiService"
+import type { AttendanceSession, GeolocationZone } from "@/types"
 
 // Fix Leaflet icon issue in Next.js
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -19,58 +21,65 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
 })
 
+// Component to update the map view when user position changes
+function SetMapView({ center }: { center: [number, number] }) {
+  const map = useMap()
+  useEffect(() => {
+    if (center) {
+      map.setView(center, map.getZoom())
+    }
+  }, [center, map])
+  return null
+}
+
 export default function SignAttendancePage() {
   const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null)
-  const [activeSessions, setActiveSessions] = useState<AttendanceSession[]>([])
   const [selectedSession, setSelectedSession] = useState<AttendanceSession | null>(null)
   const [isWithinGeofence, setIsWithinGeofence] = useState(false)
   const [isCameraActive, setIsCameraActive] = useState(false)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLocationLoading, setIsLocationLoading] = useState(true)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null)
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null)
-  const { toast } = useToast()
+
+  // API hooks
+  const { useFetchData: useFetchActiveSessions } = useApi<AttendanceSession, AttendanceSession>(ApiService.ATTENDANCE_SESSION_URL)
+  const { useAddItem: useSignAttendance } = useApi<any, any>(ApiService.SIGN_ATTENDANCE_URL)
+  const { useAddItem: useCheckGeofence } = useApi<any, any>(ApiService.GEOLOCATION_CHECK_URL)
+
+  // Fetch active attendance sessions
+  const { data: sessionsData, isLoading: isLoadingSessions, error: sessionsError } = useFetchActiveSessions(1, {
+    is_active: true
+  })
+  
+  // API mutation hooks
+  const { mutate: signAttendance, isPending } = useSignAttendance
+  const { mutate: checkGeofence } = useCheckGeofence
+
+  const activeSessions = sessionsData?.results || []
 
   useEffect(() => {
     // Get user's current position
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setCurrentPosition([position.coords.latitude, position.coords.longitude])
+          const coords: [number, number] = [position.coords.latitude, position.coords.longitude]
+          setCurrentPosition(coords)
+          setIsLocationLoading(false)
         },
         (error) => {
           console.error("Error getting location:", error)
-          toast({
-            title: "Location Error",
-            description: "Unable to get your current location. Please enable location services.",
-            variant: "destructive",
-          })
+          toast.error("Unable to get your current location. Please enable location services.")
+          setIsLocationLoading(false)
         },
       )
     } else {
-      toast({
-        title: "Location Not Supported",
-        description: "Geolocation is not supported by your browser.",
-        variant: "destructive",
-      })
+      toast.error("Geolocation is not supported by your browser.")
+      setIsLocationLoading(false)
     }
-
-    // Fetch active sessions
-    const fetchActiveSessions = async () => {
-      try {
-        // Replace with actual API call
-        const response = await fetch("/api/student/active-sessions")
-        const data = await response.json()
-        setActiveSessions(data)
-      } catch (error) {
-        console.error("Failed to fetch active sessions:", error)
-      }
-    }
-
-    fetchActiveSessions()
-  }, [toast])
+  }, [])
 
   useEffect(() => {
     if (isCameraActive) {
@@ -79,6 +88,7 @@ export default function SignAttendancePage() {
       stopCamera();
     }
   }, [isCameraActive]);
+
   useEffect(() => {
     return () => stopCamera();
   }, []);
@@ -90,48 +100,36 @@ export default function SignAttendancePage() {
     }
   }, [videoStream]);
 
+  // Check if user is within geofence when session or position changes
+  useEffect(() => {
+    const verifyGeofence = async () => {
+      if (selectedSession && currentPosition) {
+        try {
+          checkGeofence({
+            session_id: selectedSession.id,
+            latitude: currentPosition[0],
+            longitude: currentPosition[1]
+          }, {
+            onSuccess: (data) => {
+              setIsWithinGeofence(data.is_within_geofence)
+            },
+            onError: (error) => {
+              console.error("Failed to check geofence:", error)
+              setIsWithinGeofence(false)
+              toast.error("Failed to verify your location")
+            }
+          })
+        } catch (error) {
+          console.error("Error checking geofence:", error)
+          setIsWithinGeofence(false)
+        }
+      } else {
+        setIsWithinGeofence(false)
+      }
+    }
 
-  // Mock active sessions
-  const mockSessions: AttendanceSession[] = [
-    {
-      id: "1",
-      timetable: { id: "101" },
-      lecturer: { id: "user123", first_name: "John", last_name: "Doe" },
-      course: { id: "101", name: "Database Systems", code: "CS301" },
-      start_time: "09:00:00",
-      end_time: "11:00:00",
-      is_makeup_class: false,
-      geolocation_zone: {
-        id: "geo1",
-        name: "Computer Science Building",
-        coordinates:[{
-          latitude: -1.2921,
-          longitude: 36.8219,
-        }],
-      },
-      class_group: "CS-Y3-A",
-      is_active: true,
-    },
-    {
-      id: "2",
-      timetable: { id: "102" },
-      lecturer: { id: "user124", first_name: "Jane", last_name: "Smith" },
-      course: { id: "102", name: "Software Engineering", code: "CS302" },
-      start_time: "14:00:00",
-      end_time: "16:00:00",
-      is_makeup_class: false,
-      geolocation_zone: {
-        id: "geo2",
-        name: "Engineering Block",
-        coordinates:[{
-          latitude: -1.2921,
-          longitude: 36.8219,
-        }],
-      },
-      class_group: "CS-Y3-A",
-      is_active: true,
-    },
-  ]
+    verifyGeofence()
+  }, [selectedSession, currentPosition, checkGeofence])
 
   const startCamera = async () => {
     try {
@@ -143,22 +141,16 @@ export default function SignAttendancePage() {
         videoRef.current.play()
       }
     } catch (error) {
-      toast({
-        title: "Camera Access Denied",
-        description: "Please enable camera access to verify your identity.",
-        variant: "destructive",
-      })
+      toast.error("Please enable camera access to verify your identity.")
     }
   }
 
   const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream
-      const tracks = stream.getTracks()
-      tracks.forEach((track) => track.stop())
-      videoRef.current.srcObject = null
-      setIsCameraActive(false)
+    if (videoStream) {
+      videoStream.getTracks().forEach((track) => track.stop())
+      setVideoStream(null)
     }
+    setIsCameraActive(false)
   }
 
   const captureImage = () => {
@@ -186,11 +178,7 @@ export default function SignAttendancePage() {
 
   const submitAttendance = async () => {
     if (!selectedSession || !currentPosition || !capturedImage || !isWithinGeofence) {
-      toast({
-        title: "Cannot Submit Attendance",
-        description: "Please ensure you are within the geofence and have taken a photo.",
-        variant: "destructive",
-      })
+      toast.error("Please ensure you are within the geofence and have taken a photo.")
       return
     }
 
@@ -209,34 +197,23 @@ export default function SignAttendancePage() {
       formData.append("longitude", currentPosition[1].toString())
       formData.append("facial_image", file)
 
-      // Replace with actual API call
-      const apiResponse = await fetch("/api/student/sign-attendance", {
-        method: "POST",
-        body: formData,
+      signAttendance(formData, {
+        onSuccess: () => {
+          toast.success("Your attendance has been successfully recorded.")
+          setSelectedSession(null)
+          setCapturedImage(null)
+        },
+        onError: (error) => {
+          console.error("Failed to submit attendance:", error)
+          toast.error(error.message || "Failed to submit attendance")
+        },
+        onSettled: () => {
+          setIsSubmitting(false)
+        }
       })
-
-      const data = await apiResponse.json()
-
-      if (!apiResponse.ok) {
-        throw new Error(data.message || "Failed to submit attendance")
-      }
-
-      toast({
-        title: "Attendance Submitted",
-        description: "Your attendance has been successfully recorded.",
-      })
-
-      // Reset state
-      setSelectedSession(null)
-      setCapturedImage(null)
     } catch (error) {
       console.error("Failed to submit attendance:", error)
-      toast({
-        title: "Submission Failed",
-        description: error instanceof Error ? error.message : "Something went wrong",
-        variant: "destructive",
-      })
-    } finally {
+      toast.error("Something went wrong while submitting attendance")
       setIsSubmitting(false)
     }
   }
@@ -256,8 +233,14 @@ export default function SignAttendancePage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockSessions.length > 0 ? (
-                mockSessions.map((session) => (
+              {isLoadingSessions ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : sessionsError ? (
+                <p className="text-center text-red-500">Failed to load active sessions</p>
+              ) : activeSessions.length > 0 ? (
+                activeSessions.map((session) => (
                   <div
                     key={session.id}
                     className={`flex cursor-pointer items-center space-x-4 rounded-md border p-4 transition-colors ${
@@ -267,12 +250,12 @@ export default function SignAttendancePage() {
                   >
                     <div className="flex-1 space-y-1">
                       <p className="font-medium">
-                        {session.course.name} ({session.course.code})
+                        {session.timetable.course.name} ({session.timetable.course.code})
                       </p>
                       <p className="text-sm text-muted-foreground">
                         Lecturer: {session.lecturer.first_name} {session.lecturer.last_name}
                       </p>
-                      <p className="text-sm text-muted-foreground">Location: {session.geolocation_zone.name}</p>
+                      <p className="text-sm text-muted-foreground">Location: {session.geolocation_zone?.name || 'Unknown Location'}</p>
                     </div>
                     {selectedSession?.id === session.id && <Check className="h-5 w-5 text-primary" />}
                   </div>
@@ -290,38 +273,37 @@ export default function SignAttendancePage() {
             <CardDescription>You must be within the class geofence to sign attendance</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
-            {currentPosition && selectedSession?.geolocation_zone ? (
+            {isLocationLoading ? (
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2">Getting your location...</span>
+              </div>
+            ) : currentPosition ? (
               <MapContainer center={currentPosition} zoom={17} style={{ height: "100%", width: "100%" }}>
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
+                <SetMapView center={currentPosition} />
                 <Marker position={currentPosition}>
                   <Popup>Your current location</Popup>
                 </Marker>
-                {selectedSession.geolocation_zone.coordinates &&
-                <Circle
-                 center={[
-                   selectedSession.geolocation_zone?.coordinates[0].latitude as number,
-                   selectedSession.geolocation_zone?.coordinates[0].longitude as number,
-                 ]}
-                 radius={50}
-                 pathOptions={{
-                   color: isWithinGeofence ? "green" : "red",
-                   fillColor: isWithinGeofence ? "green" : "red",
-                   fillOpacity: 0.2,
-                 }}
-               >
-                 <Popup>{selectedSession.geolocation_zone.name}</Popup>
-               </Circle>
-                }
-               
+                {selectedSession?.geolocation_zone?.coordinates && selectedSession.geolocation_zone.coordinates.length > 0 && (
+                  <Polygon
+                    positions={selectedSession.geolocation_zone.coordinates.map(coord => [coord.lat, coord.lon])}
+                    pathOptions={{
+                      color: isWithinGeofence ? "green" : "red",
+                      fillColor: isWithinGeofence ? "green" : "red",
+                      fillOpacity: 0.2,
+                    }}
+                  >
+                    <Popup>{selectedSession.geolocation_zone.name}</Popup>
+                  </Polygon>
+                )}
               </MapContainer>
             ) : (
               <div className="flex h-full items-center justify-center">
-                <p className="text-muted-foreground">
-                  {!currentPosition ? "Getting your location..." : "Select a session to view the geofence"}
-                </p>
+                <p className="text-muted-foreground">Failed to get your location</p>
               </div>
             )}
           </CardContent>
@@ -372,8 +354,8 @@ export default function SignAttendancePage() {
                   <X className="mr-2 h-4 w-4" />
                   Retake
                 </Button>
-                <Button onClick={submitAttendance} disabled={!isWithinGeofence || isSubmitting}>
-                  {isSubmitting ? (
+                <Button onClick={submitAttendance} disabled={!isWithinGeofence || isSubmitting || isPending}>
+                  {isSubmitting || isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Submitting...

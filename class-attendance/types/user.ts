@@ -18,6 +18,7 @@ export interface User {
   date_joined: string;
   is_verified: boolean;
   registered_face?: string;
+  address?: string;
 }
 
 export interface RegisterRequest {

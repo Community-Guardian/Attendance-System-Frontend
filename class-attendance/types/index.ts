@@ -12,6 +12,7 @@ export * from './geolocation';
 export * from './system';
 export * from './reports';
 export * from './api';
+export * from './custom';
 
 // Define common interfaces used across multiple modules
 export interface BaseResponseType {

@@ -1,88 +1,59 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { Clock } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Timetable } from "@/types"
 
-const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday",]
+import ApiService from "@/handler/ApiService"
+import { useApi } from "@/hooks/useApi"
+
+const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 const timeSlots = Array.from({ length: 12 }, (_, i) => `${i + 8}:00`)
 
 export default function TimetablePage() {
-  const [timetableData, setTimetableData] = useState<Timetable[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  // State to track the selected day for daily view
+  const [selectedDay, setSelectedDay] = useState<string>("")
 
-  useEffect(() => {
-    const fetchTimetable = async () => {
-      try {
-        // Replace with actual API call
-        const response = await fetch("/api/student/timetable")
-        const data = await response.json()
-        setTimetableData(data)
-      } catch (error) {
-        console.error("Failed to fetch timetable:", error)
-      } finally {
-        setIsLoading(false)
-      }
+  // Fetch all timetable data once
+  const { useFetchData: useFetchTimetable } = useApi<Timetable, Timetable>(ApiService.TIMETABLE_URL)
+  const { data: timetableData, isLoading: isTimetableLoading } = useFetchTimetable(1)
+
+  // Organize timetable data by day using useMemo to prevent recomputation on every render
+  const timetableByDay = useMemo(() => {
+    const byDay: Record<string, any[]> = {
+      Monday: [],
+      Tuesday: [],
+      Wednesday: [],
+      Thursday: [],
+      Friday: [],
     }
+    
+    if (timetableData?.results) {
+      timetableData.results.forEach((item) => {
+        if (item.day_of_week && byDay[item.day_of_week]) {
+          byDay[item.day_of_week].push(item)
+        }
+      })
+    }
+    
+    return byDay
+  }, [timetableData])
 
-    fetchTimetable()
+  // Set current day of week on component mount
+  useEffect(() => {
+    const today = new Date()
+    const dayIndex = today.getDay() - 1 // 0 = Sunday, 1 = Monday, etc.
+    
+    // Default to Monday if it's weekend
+    if (dayIndex >= 0 && dayIndex < 5) {
+      setSelectedDay(daysOfWeek[dayIndex])
+    } else {
+      setSelectedDay("Monday")
+    }
   }, [])
-
-  // Mock data for the timetable
-  const mockTimetable: Timetable[] = [
-    {
-      id: "1",
-      course: { id: "101", name: "Database Systems", code: "CS301" },
-      lecturer: "user123",
-      day_of_week: "Monday",
-      start_time: "09:00:00",
-      end_time: "11:00:00",
-      is_makeup_class: false,
-    },
-    {
-      id: "2",
-      course: { id: "102", name: "Software Engineering", code: "CS302" },
-      lecturer: "user124",
-      day_of_week: "Monday",
-      start_time: "14:00:00",
-      end_time: "16:00:00",
-      is_makeup_class: false,
-    },
-    {
-      id: "3",
-      course: { id: "103", name: "Computer Networks", code: "CS303" },
-      lecturer: "user125",
-      day_of_week: "Tuesday",
-      start_time: "11:00:00",
-      end_time: "13:00:00",
-      is_makeup_class: false,
-    },
-    {
-      id: "4",
-      course: { id: "104", name: "Artificial Intelligence", code: "CS304" },
-      lecturer: "user126",
-      day_of_week: "Wednesday",
-      start_time: "09:00:00",
-      end_time: "11:00:00",
-      is_makeup_class: false,
-    },
-    {
-      id: "5",
-      course: { id: "105", name: "Web Development", code: "CS305" },
-      lecturer: "user127",
-      day_of_week: "Thursday",
-      start_time: "14:00:00",
-      end_time: "16:00:00",
-      is_makeup_class: false,
-    },
-  ]
-
-  const getTimetableForDay = (day: string) => {
-    return mockTimetable.filter((item) => item.day_of_week === day)
-  }
 
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(":")
@@ -90,6 +61,14 @@ export default function TimetablePage() {
     const ampm = hour >= 12 ? "PM" : "AM"
     const formattedHour = hour % 12 || 12
     return `${formattedHour}:${minutes} ${ampm}`
+  }
+
+  if (isTimetableLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Loading timetable...</p>
+      </div>
+    )
   }
 
   return (
@@ -131,7 +110,7 @@ export default function TimetablePage() {
                         {timeSlots.map((time) => (
                           <div key={`${day}-${time}`} className="h-16 border-t"></div>
                         ))}
-                        {getTimetableForDay(day).map((item) => {
+                        {timetableByDay[day].map((item) => {
                           const startHour = Number.parseInt(item.start_time.split(":")[0], 10);
                           const endHour = Number.parseInt(item.end_time.split(":")[0], 10);
                           const startOffset = (startHour - 8) * 64; // 64px per hour
@@ -164,13 +143,26 @@ export default function TimetablePage() {
         <TabsContent value="daily" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Today's Schedule</CardTitle>
-              <CardDescription>Your classes for today</CardDescription>
+              <CardTitle>
+                <div className="flex justify-between items-center">
+                  <span>{selectedDay}'s Schedule</span>
+                  <select 
+                    value={selectedDay}
+                    onChange={(e) => setSelectedDay(e.target.value)}
+                    className="border rounded p-1 text-sm"
+                  >
+                    {daysOfWeek.map(day => (
+                      <option key={day} value={day}>{day}</option>
+                    ))}
+                  </select>
+                </div>
+              </CardTitle>
+              <CardDescription>Your classes for {selectedDay}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {getTimetableForDay("Monday").length > 0 ? (
-                  getTimetableForDay("Monday").map((item) => (
+                {timetableByDay[selectedDay]?.length > 0 ? (
+                  timetableByDay[selectedDay].map((item) => (
                     <div key={item.id} className="flex items-center space-x-4 rounded-md border p-4">
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                         <Clock className="h-6 w-6 text-primary" />
@@ -185,7 +177,7 @@ export default function TimetablePage() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-center text-muted-foreground">No classes scheduled for today</p>
+                  <p className="text-center text-muted-foreground">No classes scheduled for {selectedDay}</p>
                 )}
               </div>
             </CardContent>

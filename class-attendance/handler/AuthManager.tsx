@@ -1,9 +1,8 @@
-import { LOGIN_URL, BASE_URL, REGISTER_URL, REFRESH_TOKEN_URL, USER_URL, LOGOUT_URL, CHANGE_PASSWORD_URL, RESEND_EMAIL_URL, RESET_PASSWORD_URL, VERIFY_TOKEN_URL, MASS_REGISTER_URL } from '@/handler/apiConfig';
+import { LOGIN_URL, BASE_URL, REGISTER_URL, TOKEN_REFRESH_URL as REFRESH_TOKEN_URL, USER_URL, LOGOUT_URL, PASSWORD_CHANGE_URL as CHANGE_PASSWORD_URL, RESEND_EMAIL_URL, PASSWORD_RESET_URL as RESET_PASSWORD_URL, TOKEN_VERIFY_URL as VERIFY_TOKEN_URL, MASS_REGISTER_URL } from '@/handler/apiConfig';
 import { api, handleApiError } from '@/utils/api';
 import axios, { AxiosError, AxiosResponse, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import { User, ApiErrorResponse } from '@/types';
 import Cookies from 'js-cookie'; // Import js-cookie
-import { promises } from 'dns';
 
 export interface AuthResponse {
   access: string;
