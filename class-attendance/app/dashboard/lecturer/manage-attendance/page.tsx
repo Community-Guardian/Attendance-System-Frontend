@@ -28,204 +28,419 @@ import { useToast } from "@/hooks/use-toast"
 import { Progress } from "@/components/ui/progress"
 import { Check, X } from 'lucide-react'
 
-const studentsData = [
-  { id: 1, name: "Alice Johnson", status: "present" },
-  { id: 2, name: "Bob Smith", status: "absent" },
-  { id: 3, name: "Charlie Brown", status: "present" },
-  { id: 4, name: "Diana Ross", status: "late" },
-  { id: 5, name: "Edward Norton", status: "present" },
-]
+// API integration
+import { useApi } from "@/hooks/useApi"
+import ApiService from "@/handler/ApiService"
+import type { AttendanceSession, AttendanceRecord, Course, Enrollment, User } from "@/types"
+import { toast } from "sonner"
 
 export default function ManageAttendancePage() {
-  const { toast } = useToast()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("active")
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCourse, setSelectedCourse] = useState<string | null>("CS101")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [selectedCourse, setSelectedCourse] = useState<string | null>(null)
   const [isStartingSession, setIsStartingSession] = useState(false)
   const [isEndingSession, setIsEndingSession] = useState(false)
-  const [selectedSession, setSelectedSession] = useState<any | null>(null)
+  const [selectedSession, setSelectedSession] = useState<AttendanceSession | null>(null)
   const [showStudentList, setShowStudentList] = useState(false)
   const [selectedStudents, setSelectedStudents] = useState<string[]>([])
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(10)
+  const [refreshInterval, setRefreshInterval] = useState(10000) // 10 seconds by default
+
+  // Add debounce effect for search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // API hooks
+  const { 
+    useFetchData: useFetchSessions, 
+    useUpdateItem: useUpdateSession,
+    useAddItem: useStartSession 
+  } = useApi<AttendanceSession, AttendanceSession>(ApiService.ATTENDANCE_SESSION_URL)
+  
+  const { 
+    useFetchData: useFetchCourses 
+  } = useApi<Enrollment, Enrollment>(ApiService.LECTURER_COURSES_URL)
+  
+  const { 
+    useFetchData: useFetchRecords,
+    useUpdateItem: useUpdateRecord 
+  } = useApi<AttendanceRecord, AttendanceRecord>(ApiService.ATTENDANCE_RECORD_URL)
+  
+  const { 
+    useFetchData: useFetchStudents 
+  } = useApi<User, User>(ApiService.USER_URL)
+
+  // Fetch data with appropriate filters
+  const { 
+    data: activeSessions, 
+    isLoading: isLoadingActive, 
+    error: activeError,
+    refetch: refetchActiveSessions 
+  } = useFetchSessions(page, { 
+    is_active: true,
+    search: debouncedSearch,
+    page_size: pageSize 
+  })
+
+  const { 
+    data: pastSessions, 
+    isLoading: isLoadingPast, 
+    error: pastError,
+    refetch: refetchPastSessions 
+  } = useFetchSessions(page, { 
+    is_active: false,
+    search: debouncedSearch,
+    page_size: pageSize
+  })
+
+  const { 
+    data: coursesData, 
+    isLoading: isLoadingCourses, 
+    error: coursesError 
+  } = useFetchCourses(1, { 
+    is_active: true, 
+    page_size: 100 
+  })
+
+  const { 
+    data: studentsData, 
+    isLoading: isLoadingStudents, 
+    error: studentsError,
+    refetch: refetchStudents
+  } = useFetchStudents(1, {
+    session_id: selectedSession?.id as string,
+    page_size: 100
+  })
+
+  const { 
+    data: recordsData, 
+    isLoading: isLoadingRecords, 
+    error: recordsError,
+    refetch: refetchRecords
+  } = useFetchRecords(1, {
+    session_id: selectedSession?.id as string,
+    page_size: 100,
+    live: true
+  })
+
+  // Handle auto-refresh for active sessions
+  useEffect(() => {
+    if (activeTab !== "active") return
+
+    const interval = setInterval(() => {
+      refetchActiveSessions()
+      if (selectedSession) {
+        refetchRecords()
+      }
+    }, refreshInterval)
+
+    return () => clearInterval(interval)
+  }, [activeTab, refreshInterval, refetchActiveSessions, selectedSession, refetchRecords])
+
+  // Handle errors
+  useEffect(() => {
+    if (activeError) {
+      toast.error(`Failed to load active sessions: ${activeError.message || 'Unknown error'}`)
+    }
+    if (pastError) {
+      toast.error(`Failed to load past sessions: ${pastError.message || 'Unknown error'}`)
+    }
+    if (coursesError) {
+      toast.error(`Failed to load courses: ${coursesError.message || 'Unknown error'}`)
+    }
+    if (studentsError) {
+      toast.error(`Failed to load students: ${studentsError.message || 'Unknown error'}`)
+    }
+    if (recordsError) {
+      toast.error(`Failed to load attendance records: ${recordsError.message || 'Unknown error'}`)
+    }
+  }, [activeError, pastError, coursesError, studentsError, recordsError])
+
+  // Mutations
+  const { mutate: startSession } = useStartSession
+  const { mutate: updateSession } = useUpdateSession
+  const { mutate: updateRecord } = useUpdateRecord
+
+  // Live attendance state
   const [liveAttendance, setLiveAttendance] = useState<{
     present: number
     total: number
     recentSignIns: Array<{ id: string; name: string; time: string }>
   }>({
-    present: 28,
-    total: 40,
-    recentSignIns: [
-      { id: "1", name: "Alice Johnson", time: "Just now" },
-      { id: "2", name: "Bob Smith", time: "1 min ago" },
-      { id: "3", name: "Charlie Brown", time: "3 mins ago" },
-    ],
+    present: 0,
+    total: 0,
+    recentSignIns: [],
   })
 
+  // Update live attendance data when records data changes
   useEffect(() => {
-    // Only run this effect when the active tab is "active"
-    if (activeTab !== "active") return
-
-    // Simulate real-time updates
-    const interval = setInterval(() => {
-      if (liveAttendance.present < liveAttendance.total) {
-        const newPresent = Math.min(liveAttendance.present + 1, liveAttendance.total)
-
-        // Generate a random student name for the sign-in
-        const names = [
-          "David Wilson",
-          "Emma Davis",
-          "Frank Miller",
-          "Grace Taylor",
-          "Henry Clark",
-          "Ivy Robinson",
-          "Jack Lewis",
-          "Kate Moore",
-        ]
-        const randomName = names[Math.floor(Math.random() * names.length)]
-
-        // Update the state with new attendance data
-        setLiveAttendance((prev) => ({
-          ...prev,
-          present: newPresent,
-          recentSignIns: [
-            { id: Date.now().toString(), name: randomName, time: "Just now" },
-            ...prev.recentSignIns
-              .map((signIn) => ({
-                ...signIn,
-                time:
-                  signIn.time === "Just now"
-                    ? "1 min ago"
-                    : signIn.time === "1 min ago"
-                      ? "2 mins ago"
-                      : signIn.time === "2 mins ago"
-                        ? "3 mins ago"
-                        : signIn.time,
-              }))
-              .slice(0, 4),
-          ],
-        }))
-      }
-    }, 5000) // Update every 5 seconds
-
-    return () => clearInterval(interval)
-  }, [activeTab, liveAttendance])
-
-  // Dummy data
-  const courses = [
-    { id: "101", name: "Database Systems", code: "CS301" },
-    { id: "102", name: "Software Engineering", code: "CS302" },
-    { id: "103", name: "Computer Networks", code: "CS303" },
-  ]
-
-  const activeSessions = [
-    {
-      id: "1",
-      course: { id: "101", name: "Database Systems", code: "CS301" },
-      startTime: "09:00 AM",
-      duration: "2 hours",
-      studentsPresent: 36,
-      totalStudents: 40,
-      location: "Computer Science Building",
-      status: "active",
-    },
-  ]
-
-  const pastSessions = [
-    {
-      id: "2",
-      course: { id: "102", name: "Software Engineering", code: "CS302" },
-      date: "May 15, 2023",
-      startTime: "02:00 PM",
-      duration: "2 hours",
-      studentsPresent: 38,
-      totalStudents: 45,
-      location: "Engineering Block",
-      status: "completed",
-    },
-    {
-      id: "3",
-      course: { id: "103", name: "Computer Networks", code: "CS303" },
-      date: "May 14, 2023",
-      startTime: "11:00 AM",
-      duration: "2 hours",
-      studentsPresent: 28,
-      totalStudents: 35,
-      location: "Computer Science Building",
-      status: "completed",
-    },
-  ]
-
-  const students = [
-    { id: "1", name: "Alice Johnson", studentId: "CS/001/19", status: "present" },
-    { id: "2", name: "Bob Smith", studentId: "CS/002/19", status: "present" },
-    { id: "3", name: "Charlie Brown", studentId: "CS/003/19", status: "absent" },
-    { id: "4", name: "Diana Prince", studentId: "CS/004/19", status: "present" },
-    { id: "5", name: "Edward Stark", studentId: "CS/005/19", status: "absent" },
-    { id: "6", name: "Fiona Gallagher", studentId: "CS/006/19", status: "present" },
-    { id: "7", name: "George Wilson", studentId: "CS/007/19", status: "present" },
-    { id: "8", name: "Hannah Baker", studentId: "CS/008/19", status: "absent" },
-    { id: "9", name: "Ian Malcolm", studentId: "CS/009/19", status: "present" },
-    { id: "10", name: "Jane Foster", studentId: "CS/010/19", status: "present" },
-  ]
+    if (recordsData?.results && selectedSession) {
+      const presentRecords = recordsData.results.filter(record => record.status === 'present')
+      const totalStudents = selectedSession.class_group.total_students || recordsData.count || 0
+      
+      // Get the most recent sign-ins (up to 5)
+      const recentSignIns = presentRecords
+        .sort((a, b) => new Date(b.timestamp || '').getTime() - new Date(a.timestamp || '').getTime())
+        .slice(0, 5)
+        .map(record => {
+          // Calculate how long ago the sign-in was
+          const signInTime = new Date(record.timestamp || '').getTime()
+          const now = new Date().getTime()
+          const diffInMinutes = Math.floor((now - signInTime) / (1000 * 60))
+          
+          let timeString = "Just now"
+          if (diffInMinutes === 1) {
+            timeString = "1 min ago"
+          } else if (diffInMinutes > 1) {
+            timeString = `${diffInMinutes} mins ago`
+          }
+          
+          return {
+            id: record.id || '',
+            name: record.student?.first_name || 'Unknown Student',
+            time: timeString
+          }
+        })
+      
+      setLiveAttendance({
+        present: presentRecords.length,
+        total: totalStudents,
+        recentSignIns: recentSignIns
+      })
+    }
+  }, [recordsData, selectedSession])
 
   const handleStartSession = () => {
-    setIsStartingSession(true)
+    if (!selectedCourse) {
+      toast.error('Please select a course')
+      return
+    }
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsStartingSession(false)
-      toast({
-        title: "Session Started",
-        description: `Attendance session for ${selectedCourse} has been started.`,
-      })
-      // Reset form
-      setSelectedCourse(null)
-    }, 1500)
+    setIsStartingSession(true)
+    
+    startSession({ 
+      timetable_id: selectedCourse,
+      is_active: true
+    }, {
+      onSuccess: () => {
+        toast.success('Attendance session started successfully')
+        refetchActiveSessions()
+        setSelectedCourse(null)
+      },
+      onError: (error) => {
+        toast.error(`Failed to start session: ${error.message || 'Unknown error'}`)
+      },
+      onSettled: () => {
+        setIsStartingSession(false)
+      }
+    })
   }
 
   const handleEndSession = (sessionId: string) => {
     setIsEndingSession(true)
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsEndingSession(false)
-      toast({
-        title: "Session Ended",
-        description: "Attendance session has been ended successfully.",
-      })
-      // Update UI
-      setActiveTab("past")
-    }, 1500)
+    updateSession({
+      id: sessionId,
+      item: { is_active: false }
+    }, {
+      onSuccess: () => {
+        toast.success('Attendance session ended successfully')
+        refetchActiveSessions()
+        refetchPastSessions()
+        setActiveTab('past')
+      },
+      onError: (error) => {
+        toast.error(`Failed to end session: ${error.message || 'Unknown error'}`)
+      },
+      onSettled: () => {
+        setIsEndingSession(false)
+      }
+    })
   }
 
-  const handleViewStudents = (session: any) => {
+  const handleViewStudents = (session: AttendanceSession) => {
     setSelectedSession(session)
     setShowStudentList(true)
+    refetchStudents()
+    refetchRecords()
   }
 
-  const handleToggleAttendance = (studentId: string) => {
-    if (selectedStudents.includes(studentId)) {
-      setSelectedStudents(selectedStudents.filter((id) => id !== studentId))
-    } else {
-      setSelectedStudents([...selectedStudents, studentId])
-    }
+  const handleToggleAttendance = (recordId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'present' ? 'absent' : 'present'
+    
+    updateRecord({
+      id: recordId,
+      item: { status: newStatus }
+    }, {
+      onSuccess: () => {
+        toast.success(`Student marked as ${newStatus}`)
+        refetchRecords()
+      },
+      onError: (error) => {
+        toast.error(`Failed to update attendance: ${error.message || 'Unknown error'}`)
+      }
+    })
   }
 
   const handleSaveAttendance = () => {
-    toast({
-      title: "Attendance Updated",
-      description: `Updated attendance for ${selectedStudents.length} students.`,
-    })
+    // Records are saved individually with the toggle function
     setShowStudentList(false)
-    setSelectedStudents([])
   }
 
-  const handleExportAttendance = (sessionId: string) => {
-    toast({
-      title: "Export Started",
-      description: "Attendance report is being downloaded.",
-    })
-  }
+  const handleExportAttendance = async (sessionId: string) => {
+    try {
+      toast.info('Preparing attendance export...');
+      
+      // Fetch the attendance records for the session
+      const response = await fetch(`${ApiService.ATTENDANCE_RECORD_URL}?session_id=${sessionId}&page_size=1000`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch attendance data: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const records : AttendanceRecord[] = data.results || [];
+      
+      // Get session info (assuming we need to refetch to get full details)
+      const sessionResponse = await fetch(`${ApiService.ATTENDANCE_SESSION_URL}${sessionId}/`);
+      const sessionData = await sessionResponse.json();
+      
+      // Prepare data for Excel
+      const exportData = records.map(record => ({
+        'Student Name': `${record.student?.first_name || ''} ${record.student?.last_name || ''}`,
+        'Student ID': record.student?.student_id || 'N/A',
+        'Attendance Status': record.status === 'present' ? 'Present' : 'Absent',
+        'Time Recorded': record.timestamp ? new Date(record.timestamp).toLocaleString() : 'N/A'
+      }));
+      
+      // Generate CSV string
+      const headers = Object.keys(exportData[0] || {}).join(',');
+      const rows = exportData.map(row => 
+        Object.values(row).map(value => `"${value}"`).join(',')
+      );
+      const csvContent = [headers, ...rows].join('\n');
+      
+      // Create blob and download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      // Set download filename with course info if available
+      const courseName = sessionData?.timetable?.course?.code || 'attendance';
+      const date = new Date(sessionData?.start_time || Date.now()).toISOString().split('T')[0];
+      link.download = `${courseName}_attendance_${date}.csv`;
+      
+      // Trigger download
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+      
+      toast.success('Attendance report downloaded successfully');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error(`Failed to export attendance: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Format data for the UI
+  const formattedActiveSessions = activeSessions?.results?.map(session => {
+    // Find attendance records for this session
+    const sessionRecords = recordsData?.results?.filter(record => 
+      record.session?.id === session.id
+    ) || [];
+    
+    // Count present students from records
+    const presentStudents = sessionRecords.filter(record => 
+      record.status === 'present'
+    ).length;
+    
+    // Get total students either from session data or count from class group
+    const totalStudents = session.class_group?.total_students || 
+                         sessionRecords.length || 0;
+    
+    return {
+      id: session.id || '',
+      course: { 
+        id: session.timetable?.course?.id || '', 
+        name: session.timetable?.course?.name || 'Unknown Course',
+        code: session.timetable?.course?.code || 'N/A'
+      },
+      startTime: new Date(session.start_time || '').toLocaleTimeString(),
+      duration: `${session.timetable?.duration || 0} minutes`,
+      studentsPresent: presentStudents,
+      totalStudents: totalStudents,
+      location:  session.geolocation_zone?.name || 'Not specified',
+      status: session.is_active ? 'active' : 'completed'
+    };
+  }) || []
+
+  const formattedPastSessions = pastSessions?.results?.map(session => {
+    // Find attendance records for this session
+    const sessionRecords = recordsData?.results?.filter(record => 
+      record.session?.id === session.id
+    ) || [];
+    
+    // Count present students from records
+    const presentStudents = sessionRecords.filter(record => 
+      record.status === 'present'
+    ).length;
+    
+    // Get total students either from session data or count from class group
+    const totalStudents = session.class_group?.total_students || 
+                         sessionRecords.length || 0;
+    
+    // Calculate duration from start_time and end_time
+    let durationText = 'Unknown';
+    if (session.start_time && session.end_time) {
+      const startTime = new Date(session.start_time);
+      const endTime = new Date(session.end_time);
+      const durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
+      durationText = `${durationMinutes} minutes`;
+    } else if (session.timetable?.duration) {
+      // Fallback to timetable duration if available
+      durationText = `${session.timetable.duration} minutes`;
+    }
+    
+    return {
+      id: session.id || '',
+      course: { 
+        id: session.timetable?.course?.id || '', 
+        name: session.timetable?.course?.name || 'Unknown Course',
+        code: session.timetable?.course?.code || 'N/A'
+      },
+      date: new Date(session.start_time || '').toLocaleDateString(),
+      startTime: new Date(session.start_time || '').toLocaleTimeString(),
+      duration: durationText,
+      studentsPresent: presentStudents,
+      totalStudents: totalStudents,
+      location: session.geolocation_zone?.name || 'Not specified',
+      status: session.is_active ? 'active' : 'completed'
+    };
+  }) || []
+
+  const formattedStudentRecords = recordsData?.results?.map(record => ({
+    id: record.id || '',
+    studentId: record.student?.id || '',
+    name: record.student?.first_name || 'Unknown Student',
+    studentIdNumber: record.student?.student_id || 'N/A',
+    status: record.status || 'absent',
+    timestamp: record.timestamp || null
+  })) || []
+
+  const availableCourses = coursesData?.results?.map(enrollment => ({
+    id: enrollment.id || '',
+    course_id: enrollment.course?.id || '',
+    name: enrollment.course?.name || 'Unknown Course',
+    code: enrollment.course?.code || 'N/A'
+  })) || []
 
   return (
     <div className="space-y-6">
@@ -237,59 +452,50 @@ export default function ManageAttendancePage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Real-time Attendance</CardTitle>
+            <CardTitle>Start New Session</CardTitle>
             <Select value={selectedCourse || ""} onValueChange={setSelectedCourse}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[280px]">
                 <SelectValue placeholder="Select course" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="CS101">CS101</SelectItem>
-                <SelectItem value="CS201">CS201</SelectItem>
-                <SelectItem value="CS301">CS301</SelectItem>
+                {isLoadingCourses ? (
+                  <div className="flex items-center justify-center py-2">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Loading courses...
+                  </div>
+                ) : availableCourses.length === 0 ? (
+                  <div className="p-2 text-center text-sm text-muted-foreground">
+                    No courses available
+                  </div>
+                ) : (
+                  availableCourses.map((course) => (
+                    <SelectItem key={course.id} value={course.id}>
+                      {course.code} - {course.name}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
-          <CardDescription>Mark attendance for {selectedCourse}</CardDescription>
+          <CardDescription>Start a new attendance session for your selected course</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {studentsData.map((student) => (
-                <TableRow key={student.id}>
-                  <TableCell>{student.name}</TableCell>
-                  <TableCell>
-                    <span className={`capitalize ${
-                      student.status === "present" ? "text-green-600" :
-                      student.status === "absent" ? "text-red-600" :
-                      "text-yellow-600"
-                    }`}>
-                      {student.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button size="sm" variant="outline" className="w-24">
-                        <Check className="mr-2 h-4 w-4" /> Present
-                      </Button>
-                      <Button size="sm" variant="outline" className="w-24">
-                        <X className="mr-2 h-4 w-4" /> Absent
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <div className="mt-4 flex justify-end">
-            <Button>Save Attendance</Button>
-          </div>
+        <CardContent className="flex justify-end">
+          <Button 
+            onClick={handleStartSession} 
+            disabled={!selectedCourse || isStartingSession}
+          >
+            {isStartingSession ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Starting...
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                Start Session
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
 
@@ -312,9 +518,28 @@ export default function ManageAttendancePage() {
                 />
               </div>
             </div>
+            <Select 
+              value={refreshInterval.toString()} 
+              onValueChange={(val) => setRefreshInterval(parseInt(val))}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Refresh rate" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5000">Refresh: 5s</SelectItem>
+                <SelectItem value="10000">Refresh: 10s</SelectItem>
+                <SelectItem value="30000">Refresh: 30s</SelectItem>
+                <SelectItem value="60000">Refresh: 1min</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          {activeSessions.length === 0 ? (
+          {isLoadingActive ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              <span>Loading active sessions...</span>
+            </div>
+          ) : formattedActiveSessions.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-10">
                 <Clock className="h-10 w-10 text-muted-foreground mb-4" />
@@ -324,97 +549,114 @@ export default function ManageAttendancePage() {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Active Session</CardTitle>
-                  <CardDescription>
-                    {activeSessions[0].course.name} ({activeSessions[0].course.code})
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium">Attendance Progress</p>
-                        <p className="text-2xl font-bold">
-                          {liveAttendance.present}/{liveAttendance.total}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">Percentage</p>
-                        <p className="text-2xl font-bold">
-                          {Math.round((liveAttendance.present / liveAttendance.total) * 100)}%
-                        </p>
-                      </div>
-                    </div>
-                    <Progress value={(liveAttendance.present / liveAttendance.total) * 100} className="h-2" />
-                    <div className="rounded-md border p-4">
+              {formattedActiveSessions.map(session => (
+                <Card key={session.id}>
+                  <CardHeader>
+                    <CardTitle>Active Session</CardTitle>
+                    <CardDescription>
+                      {session.course.name} ({session.course.code})
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium">Start Time</p>
-                          <p className="text-sm text-muted-foreground">{activeSessions[0].startTime}</p>
+                          <p className="text-sm font-medium">Attendance Progress</p>
+                          <p className="text-2xl font-bold">
+                            {session.studentsPresent}/{session.totalStudents}
+                          </p>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium">Duration</p>
-                          <p className="text-sm text-muted-foreground">{activeSessions[0].duration}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Location</p>
-                          <p className="text-sm text-muted-foreground">{activeSessions[0].location}</p>
+                        <div className="text-right">
+                          <p className="text-sm font-medium">Percentage</p>
+                          <p className="text-2xl font-bold">
+                            {session.totalStudents > 0 
+                              ? Math.round((session.studentsPresent / session.totalStudents) * 100) 
+                              : 0}%
+                          </p>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleViewStudents(activeSessions[0])}>
-                        <Users className="mr-2 h-4 w-4" />
-                        Students
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleEndSession(activeSessions[0].id)}
-                        disabled={isEndingSession}
-                      >
-                        {isEndingSession ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Square className="mr-2 h-4 w-4" />
-                        )}
-                        End
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Live Sign-ins</CardTitle>
-                  <CardDescription>Students signing in real-time</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {liveAttendance.recentSignIns.length === 0 ? (
-                      <p className="text-center text-muted-foreground py-8">No recent sign-ins</p>
-                    ) : (
-                      liveAttendance.recentSignIns.map((signIn) => (
-                        <div key={signIn.id} className="flex items-center space-x-4 rounded-md border p-3">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                            <Users className="h-4 w-4 text-primary" />
+                      <Progress 
+                        value={session.totalStudents > 0 
+                          ? (session.studentsPresent / session.totalStudents) * 100 
+                          : 0} 
+                        className="h-2" 
+                      />
+                      <div className="rounded-md border p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">Start Time</p>
+                            <p className="text-sm text-muted-foreground">{session.startTime}</p>
                           </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{signIn.name}</p>
+                          <div>
+                            <p className="text-sm font-medium">Duration</p>
+                            <p className="text-sm text-muted-foreground">{session.duration}</p>
                           </div>
-                          <div className="text-xs text-muted-foreground">{signIn.time}</div>
+                          <div>
+                            <p className="text-sm font-medium">Location</p>
+                            <p className="text-sm text-muted-foreground">{session.location}</p>
+                          </div>
                         </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => handleViewStudents(activeSessions?.results.find(s => s.id === session.id)!)}>
+                          <Users className="mr-2 h-4 w-4" />
+                          Students
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleEndSession(session.id)}
+                          disabled={isEndingSession}
+                        >
+                          {isEndingSession ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Square className="mr-2 h-4 w-4" />
+                          )}
+                          End
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {selectedSession && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Live Sign-ins</CardTitle>
+                    <CardDescription>Students signing in real-time</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {isLoadingRecords ? (
+                        <div className="flex items-center justify-center py-6">
+                          <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                          <span>Loading sign-ins...</span>
+                        </div>
+                      ) : liveAttendance.recentSignIns.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">No recent sign-ins</p>
+                      ) : (
+                        liveAttendance.recentSignIns.map((signIn) => (
+                          <div key={signIn.id} className="flex items-center space-x-4 rounded-md border p-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                              <Users className="h-4 w-4 text-primary" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{signIn.name}</p>
+                            </div>
+                            <div className="text-xs text-muted-foreground">{signIn.time}</div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </TabsContent>
+        
         <TabsContent value="past" className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -437,7 +679,7 @@ export default function ManageAttendancePage() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuCheckboxItem checked>Show all courses</DropdownMenuCheckboxItem>
-                  {courses.map((course) => (
+                  {availableCourses.map((course) => (
                     <DropdownMenuCheckboxItem key={course.id} checked>
                       {course.name}
                     </DropdownMenuCheckboxItem>
@@ -447,55 +689,80 @@ export default function ManageAttendancePage() {
             </div>
           </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Course</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Attendance</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pastSessions.map((session) => (
-                  <TableRow key={session.id}>
-                    <TableCell>
-                      <div className="font-medium">{session.course.name}</div>
-                      <div className="text-sm text-muted-foreground">{session.course.code}</div>
-                    </TableCell>
-                    <TableCell>{session.date}</TableCell>
-                    <TableCell>{session.startTime}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <span className="font-medium">
-                          {session.studentsPresent}/{session.totalStudents}
-                        </span>
-                        <span className="ml-2 text-sm text-muted-foreground">
-                          ({Math.round((session.studentsPresent / session.totalStudents) * 100)}%)
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{session.location}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleViewStudents(session)}>
-                          <Users className="mr-2 h-4 w-4" />
-                          Students
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleExportAttendance(session.id)}>
-                          <Download className="mr-2 h-4 w-4" />
-                          Export
-                        </Button>
-                      </div>
-                    </TableCell>
+          {isLoadingPast ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              <span>Loading past sessions...</span>
+            </div>
+          ) : formattedPastSessions.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-10">
+                <Clock className="h-10 w-10 text-muted-foreground mb-4" />
+                <p className="text-lg font-medium">No Past Sessions</p>
+                <p className="text-sm text-muted-foreground mt-1">Past attendance sessions will appear here</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Course</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Time</TableHead>
+                    <TableHead>Attendance</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {formattedPastSessions.map((session) => (
+                    <TableRow key={session.id}>
+                      <TableCell>
+                        <div className="font-medium">{session.course.name}</div>
+                        <div className="text-sm text-muted-foreground">{session.course.code}</div>
+                      </TableCell>
+                      <TableCell>{session.date}</TableCell>
+                      <TableCell>{session.startTime}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <span className="font-medium">
+                            {session.studentsPresent}/{session.totalStudents}
+                          </span>
+                          <span className="ml-2 text-sm text-muted-foreground">
+                            ({session.totalStudents > 0 
+                              ? Math.round((session.studentsPresent / session.totalStudents) * 100) 
+                              : 0}%)
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{session.location}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleViewStudents(pastSessions?.results.find(s => s.id === session.id)!)}
+                          >
+                            <Users className="mr-2 h-4 w-4" />
+                            Students
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleExportAttendance(session.id)}
+                          >
+                            <Download className="mr-2 h-4 w-4" />
+                            Export
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -503,54 +770,63 @@ export default function ManageAttendancePage() {
       <Dialog open={showStudentList} onOpenChange={setShowStudentList}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{selectedSession?.course.name} - Student Attendance</DialogTitle>
+            <DialogTitle>
+              {selectedSession?.timetable?.course?.name || 'Unknown Course'} - Student Attendance
+            </DialogTitle>
             <DialogDescription>
-              {selectedSession?.status === "active"
+              {selectedSession?.is_active
                 ? "Mark or update student attendance for this session"
                 : "View student attendance for this session"}
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>ID</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  {selectedSession?.status === "active" && <TableHead className="text-right">Action</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {students.map((student) => (
-                  <TableRow key={student.id}>
-                    <TableCell className="font-medium">{student.name}</TableCell>
-                    <TableCell>{student.studentId}</TableCell>
-                    <TableCell className="text-center">
-                      {student.status === "present" ? (
-                        <CheckCircle2 className="mx-auto h-5 w-5 text-green-500" />
-                      ) : (
-                        <XCircle className="mx-auto h-5 w-5 text-red-500" />
-                      )}
-                    </TableCell>
-                    {selectedSession?.status === "active" && (
-                      <TableCell className="text-right">
-                        <Button
-                          variant={student.status === "present" ? "destructive" : "default"}
-                          size="sm"
-                          onClick={() => handleToggleAttendance(student.id)}
-                        >
-                          {student.status === "present" ? "Mark Absent" : "Mark Present"}
-                        </Button>
-                      </TableCell>
-                    )}
+          {isLoadingRecords ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              <span>Loading student records...</span>
+            </div>
+          ) : (
+            <div className="max-h-[60vh] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>ID</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                    {selectedSession?.is_active && <TableHead className="text-right">Action</TableHead>}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {formattedStudentRecords.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell className="font-medium">{record.name}</TableCell>
+                      <TableCell>{record.studentIdNumber}</TableCell>
+                      <TableCell className="text-center">
+                        {record.status === "present" ? (
+                          <CheckCircle2 className="mx-auto h-5 w-5 text-green-500" />
+                        ) : (
+                          <XCircle className="mx-auto h-5 w-5 text-red-500" />
+                        )}
+                      </TableCell>
+                      {selectedSession?.is_active && (
+                        <TableCell className="text-right">
+                          <Button
+                            variant={record.status === "present" ? "destructive" : "default"}
+                            size="sm"
+                            onClick={() => handleToggleAttendance(record.id, record.status)}
+                          >
+                            {record.status === "present" ? "Mark Absent" : "Mark Present"}
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
           <DialogFooter>
-            {selectedSession?.status === "active" ? (
-              <Button onClick={handleSaveAttendance}>Save Changes</Button>
+            {selectedSession?.is_active ? (
+              <Button onClick={handleSaveAttendance}>Close</Button>
             ) : (
               <Button onClick={() => setShowStudentList(false)}>Close</Button>
             )}
