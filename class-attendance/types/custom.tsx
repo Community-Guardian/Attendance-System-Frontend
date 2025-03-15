@@ -1,6 +1,6 @@
 // Course-specific attendance stats for students
 interface StudentCourseAttendanceStats {
-    course_id: number;           // Integer ID of the course
+    course_id: string;           // Integer ID of the course
     course_name: string;         // String name of the course
     attended_sessions: number;   // Integer count of sessions attended
     total_sessions: number;      // Integer count of total available sessions
