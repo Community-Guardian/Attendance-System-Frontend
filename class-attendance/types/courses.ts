@@ -1,26 +1,34 @@
-import { User } from ".";
-import { Department,Programme } from "./school";
-// Type definitions for courses
+import { Department,Programme,ClassGroup } from './school';
+import { User } from './user';
+/**
+ * Types for Courses app models and serializers
+ */
+
 export interface Course {
   id: string;
-  name: string;
   code: string;
-  department: Partial<Department>;
-  programmes: Partial<Programme>[];
-  lecturers: Partial<User>[];
-  students: Partial<User>[];
-  prerequisites: Partial<Course>[];  // Add this line if missing
-  description?: string;
-  active_enrollments_count?: number;
-  total_enrollments_count?: number;
+  name: string;
+  credits: number;
+  description: string;
+  department: Department;
+  department_id?: string; // Used when creating/updating
+  programmes: Programme[];
+  programme_ids?: string[]; // Used when creating/updating
+  prerequisites: Course[];
+  prerequisites_ids?: string[]; // Used when creating/updating
+  active_enrollments_count: number;
+  total_enrollments_count: number;
 }
 
 export interface Enrollment {
   id: string;
-  class_group: string; // ClassGroup ID
-  course: Partial<Course>; // Course ID
-  student: Partial<User>; // CustomUser ID
-  lecturer: Partial<User>; // CustomUser ID
-  semester: string; // Semester ID
+  class_group: ClassGroup;
+  class_group_id?: string; // Used when creating/updating
+  course: Course;
+  course_id?: string; // Used when creating/updating
+  lecturer: User;
+  lecturer_id?: string; // Used when creating/updating
+  semester?: string;
+  year?: string;
   is_active: boolean;
 }
