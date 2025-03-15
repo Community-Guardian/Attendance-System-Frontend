@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { CalendarIcon, Check, Download, Search, X } from "lucide-react"
+import { CalendarIcon, Check, Download, Loader2, Search, X } from "lucide-react"
 import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
@@ -17,165 +17,104 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { AttendanceRecord } from "@/types"
-// Mock attendance records
-const mockRecords: AttendanceRecord[] = [
-  {
-    id: "1",
-    session: {
-      id: "101",
-      course: { id: "101", name: "Database Systems", code: "CS301" },
-      lecturer: { id: "user123", first_name: "John", last_name: "Doe" },
-    },
-    student: { id: "student1", first_name: "Alice", last_name: "Johnson" },
-    timestamp: "2023-05-10T09:15:00Z",
-    latitude: -1.2921,
-    longitude: 36.8219,
-    signed_by_lecturer: true,
-    facial_image: "https://example.com/images/facial1.jpg",
-  },
-  {
-    id: "2",
-    session: {
-      id: "102",
-      course: { id: "102", name: "Software Engineering", code: "CS302" },
-      lecturer: { id: "user124", first_name: "Jane", last_name: "Smith" },
-    },
-    student: { id: "student1", first_name: "Alice", last_name: "Johnson" },
-    timestamp: "2023-05-10T14:10:00Z",
-    latitude: -1.2925,
-    longitude: 36.8225,
-    signed_by_lecturer: true,
-    facial_image: "https://example.com/images/facial2.jpg",
-  },
-  {
-    id: "3",
-    session: {
-      id: "103",
-      course: { id: "103", name: "Computer Networks", code: "CS303" },
-      lecturer: { id: "user125", first_name: "Robert", last_name: "Brown" },
-    },
-    student: { id: "student1", first_name: "Alice", last_name: "Johnson" },
-    timestamp: "2023-05-11T11:05:00Z",
-    latitude: -1.293,
-    longitude: 36.823,
-    signed_by_lecturer: false,
-    facial_image: "https://example.com/images/facial3.jpg",
-  },
-  {
-    id: "4",
-    session: {
-      id: "104",
-      course: { id: "104", name: "Artificial Intelligence", code: "CS304" },
-      lecturer: { id: "user126", first_name: "Michael", last_name: "Wilson" },
-    },
-    student: { id: "student1", first_name: "Alice", last_name: "Johnson" },
-    timestamp: "2023-05-12T09:08:00Z",
-    latitude: -1.2935,
-    longitude: 36.8235,
-    signed_by_lecturer: true,
-    facial_image: "https://example.com/images/facial4.jpg",
-  },
-  {
-    id: "5",
-    session: {
-      id: "105",
-      course: { id: "105", name: "Web Development", code: "CS305" },
-      lecturer: { id: "user127", first_name: "Sarah", last_name: "Davis" },
-    },
-    student: { id: "student1", first_name: "Alice", last_name: "Johnson" },
-    timestamp: "2023-05-13T14:12:00Z",
-    latitude: -1.294,
-    longitude: 36.824,
-    signed_by_lecturer: true,
-    facial_image: "https://example.com/images/facial5.jpg",
-  },
-]
+import { useApi } from "@/hooks/useApi"
+import ApiService from "@/handler/ApiService"
+import { toast } from "sonner"
+
 export default function AttendanceHistoryPage() {
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [selectedCourses, setSelectedCourses] = useState<string[]>([])
   const [date, setDate] = useState<Date | undefined>(undefined)
-  const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>([])
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(10)
 
+  // Add debounce effect for search
   useEffect(() => {
-    const fetchAttendanceHistory = async () => {
-      try {
-        // Replace with actual API call
-        const response = await fetch("/api/student/attendance-history")
-        const data = await response.json()
-        setAttendanceRecords(data)
-        setFilteredRecords(data)
-      } catch (error) {
-        console.error("Failed to fetch attendance history:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 300)
 
-    fetchAttendanceHistory()
-  }, [])
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
+  // API hooks
+  const { useFetchData } = useApi<AttendanceRecord, AttendanceRecord>(ApiService.ATTENDANCE_RECORD_URL)
   
-  useEffect(() => {
-    // Apply filters
-    let filtered = mockRecords;
+  // Prepare query parameters
+  const queryParams: Record<string, any> = {
+    page,
+    page_size: pageSize,
+    search: debouncedSearch,
+  }
   
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((record) => {
-        const courseName = record.session?.course?.name?.toLowerCase() || "";
-        const courseCode = record.session?.course?.code?.toLowerCase() || "";
-        const lecturerName = `${record.session?.lecturer?.first_name || ""} ${record.session?.lecturer?.last_name || ""}`.toLowerCase();
+  // Add date filter if selected
+  if (date) {
+    queryParams.date = format(date, "yyyy-MM-dd")
+  }
   
-        return courseName.includes(query) || courseCode.includes(query) || lecturerName.includes(query);
-      });
-    }
+  // Add course filter if selected
+  if (selectedCourses.length > 0) {
+    queryParams.course = selectedCourses.join(',')
+  }
+
+  // Fetch attendance records with filters
+  const { 
+    data: attendanceData, 
+    isLoading, 
+    error, 
+    refetch: refetchRecords 
+  } = useFetchData(page, queryParams)
+
+  // Extract records from the response
+  const attendanceRecords = attendanceData?.results || []
   
-    // Course filter
-    if (selectedCourses.length > 0) {
-      filtered = filtered.filter((record) => selectedCourses.includes(record.session?.course?.id || ""));
-    }
-  
-    // Date filter
-    if (date) {
-      const selectedDate = format(date, "yyyy-MM-dd");
-      filtered = filtered.filter((record) => record.timestamp?.startsWith(selectedDate));
-    }
-  
-    setFilteredRecords(filtered);
-  }, [searchQuery, selectedCourses, date, mockRecords]);
-  
-// Get unique courses for filter
+  // Get unique courses for the filter dropdown
   const uniqueCourses = Array.from(
-    new Set(mockRecords.map((record) => record.session?.course?.id).filter(Boolean)) // Ensure valid course IDs
-  ).map((courseId) => {
-    const record = mockRecords.find((record) => record.session?.course?.id === courseId);
-    return {
-      id: courseId,
-      name: record?.session?.course?.name || "",
-      code: record?.session?.course?.code || "",
-    };
-  });
+    new Set(attendanceRecords
+      .filter(record => record.session?.timetable.course?.id)
+      .map(record => ({
+        id: record.session.timetable.course.id,
+        name: record.session.timetable.course.name || "Unknown Course",
+        code: record.session.timetable.course.code || "N/A"
+      }))
+    )
+  ).reduce((acc: {id: string, name: string, code: string}[], current) => {
+    if (!acc.some(course => course.id === current.id)) {
+      acc.push(current);
+    }
+    return acc;
+  }, []);
 
+  // Show error toast when API call fails
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to load attendance records", {
+        description: error.message || "Please try again later"
+      })
+    }
+  }, [error])
 
   const formatDateTime = (dateTimeString: string) => {
-    const date = new Date(dateTimeString)
-    return format(date, "PPP p") // Format: May 10, 2023 9:15 AM
+    try {
+      const date = new Date(dateTimeString)
+      return format(date, "PPP p") // Format: May 10, 2023 9:15 AM
+    } catch (e) {
+      return "Invalid date"
+    }
   }
 
   const exportToCSV = () => {
     const headers = ["Date", "Time", "Course", "Course Code", "Lecturer", "Verified by Lecturer"]
 
-    const csvData = filteredRecords.map((record) => {
+    const csvData = attendanceRecords.map((record) => {
       const date = new Date(record.timestamp)
       return [
         format(date, "yyyy-MM-dd"),
         format(date, "HH:mm:ss"),
-        record.session?.course?.name,
-        record.session?.course?.code,
-        `${record.session?.lecturer?.first_name} ${record.session?.lecturer?.last_name}`,
+        record.session.timetable?.course?.name || "N/A",
+        record.session?.timetable.course?.code || "N/A",
+        `${record.session?.lecturer?.first_name || ""} ${record.session?.lecturer?.last_name || ""}`.trim() || "N/A",
         record.signed_by_lecturer ? "Yes" : "No",
       ]
     })
@@ -222,21 +161,28 @@ export default function AttendanceHistoryPage() {
                   <Button variant="outline">Courses</Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  {uniqueCourses.map((course) => (
-                    <DropdownMenuCheckboxItem
-                      key={course.id}
-                      checked={selectedCourses.includes(course.id as string)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedCourses([...selectedCourses , course.id as string])
-                        } else {
-                          setSelectedCourses(selectedCourses.filter((id) => id !== course.id))
-                        }
-                      }}
-                    >
-                      {course.name} ({course.code})
-                    </DropdownMenuCheckboxItem>
-                  ))}
+                  {uniqueCourses.length === 0 ? (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      No courses available
+                    </div>
+                  ) : (
+                    uniqueCourses.map((course) => (
+                      <DropdownMenuCheckboxItem
+                        key={course.id}
+                        checked={selectedCourses.includes(course.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedCourses([...selectedCourses, course.id])
+                          } else {
+                            setSelectedCourses(selectedCourses.filter((id) => id !== course.id))
+                          }
+                          setPage(1) // Reset to first page when filter changes
+                        }}
+                      >
+                        {course.name} ({course.code})
+                      </DropdownMenuCheckboxItem>
+                    ))
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
               <Popover>
@@ -247,7 +193,15 @@ export default function AttendanceHistoryPage() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
+                  <Calendar 
+                    mode="single" 
+                    selected={date} 
+                    onSelect={(newDate) => {
+                      setDate(newDate)
+                      setPage(1) // Reset to first page when filter changes
+                    }} 
+                    initialFocus 
+                  />
                 </PopoverContent>
               </Popover>
               {(searchQuery || selectedCourses.length > 0 || date) && (
@@ -256,8 +210,10 @@ export default function AttendanceHistoryPage() {
                   size="icon"
                   onClick={() => {
                     setSearchQuery("")
+                    setDebouncedSearch("")
                     setSelectedCourses([])
                     setDate(undefined)
+                    setPage(1)
                   }}
                 >
                   <X className="h-4 w-4" />
@@ -265,7 +221,7 @@ export default function AttendanceHistoryPage() {
                 </Button>
               )}
             </div>
-            <Button onClick={exportToCSV}>
+            <Button onClick={exportToCSV} disabled={attendanceRecords.length === 0 || isLoading}>
               <Download className="mr-2 h-4 w-4" />
               Export CSV
             </Button>
@@ -285,25 +241,36 @@ export default function AttendanceHistoryPage() {
                 {isLoading ? (
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
-                      Loading attendance records...
+                      <div className="flex justify-center items-center">
+                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                        Loading attendance records...
+                      </div>
                     </TableCell>
                   </TableRow>
-                ) : filteredRecords.length === 0 ? (
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center text-red-500">
+                      Error loading attendance records. Please try again.
+                    </TableCell>
+                  </TableRow>
+                ) : attendanceRecords.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
                       No attendance records found.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredRecords.map((record) => (
+                  attendanceRecords.map((record) => (
                     <TableRow key={record.id}>
                       <TableCell>{formatDateTime(record.timestamp)}</TableCell>
                       <TableCell>
-                        <div className="font-medium">{record.session?.course?.name}</div>
-                        <div className="text-sm text-muted-foreground">{record.session?.course?.code}</div>
+                        <div className="font-medium">{record.session?.timetable.course?.name || "N/A"}</div>
+                        <div className="text-sm text-muted-foreground">{record.session?.timetable.course?.code || "N/A"}</div>
                       </TableCell>
                       <TableCell>
-                        {record.session?.lecturer?.first_name} {record.session?.lecturer?.last_name}
+                        {record.session?.lecturer ? 
+                          `${record.session.lecturer.first_name || ''} ${record.session.lecturer.last_name || ''}`.trim() || "N/A"
+                          : "N/A"}
                       </TableCell>
                       <TableCell className="text-center">
                         {record.signed_by_lecturer ? (
@@ -322,6 +289,32 @@ export default function AttendanceHistoryPage() {
               </TableBody>
             </Table>
           </div>
+          
+          {attendanceData && attendanceData.count > pageSize && (
+            <div className="mt-4 flex justify-between items-center">
+              <div className="text-sm text-muted-foreground">
+                Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, attendanceData.count)} of {attendanceData.count} records
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setPage(prev => prev + 1)}
+                  disabled={!attendanceData.next}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

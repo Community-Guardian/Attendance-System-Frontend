@@ -23,6 +23,7 @@ export interface AttendanceSession {
 }
 
 export interface AttendanceRecord {
+  [x: string]: any;
   id: string;
   session: AttendanceSession;
   session_id?: string; // Used when creating/updating
