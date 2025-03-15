@@ -15,7 +15,7 @@ interface StudentCourseAttendanceStats {
   }
   // Course-specific attendance stats for lecturers
 interface LecturerCourseAttendanceStats {
-    course_id: number;              // Integer ID of the course
+    course_id: string;              // Integer ID of the course
     course_name: string;            // String name of the course
     total_students_attended: number; // Integer count of students who attended
     total_students: number;         // Integer count of total enrolled students

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { Download, Edit, Loader2, Plus, Search, Trash2, X } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -57,12 +58,20 @@ interface CourseEnrollment {
   semester: string | null
   year: string | null
   is_active: boolean
+  settings?: {
+    auto_end_session: boolean
+    allow_late_submissions: boolean
+  }
 }
 
 export default function CourseManagementPage() {
-  const { useFetchData } = useApi<DjangoPaginatedResponse<CourseEnrollment>>(ApiService.COURSE_ENROLLMENTS)
-  const { data: enrollmentsData, isLoading, error } = useFetchData(1)
-
+  const router = useRouter()
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(10)
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [autoEndSession, setAutoEndSession] = useState(true)
+  const [allowLateSubmissions, setAllowLateSubmissions] = useState(false)
+  
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null)
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
@@ -72,15 +81,148 @@ export default function CourseManagementPage() {
   const [selectAll, setSelectAll] = useState(false)
   const [currentCourse, setCurrentCourse] = useState<CourseEnrollment | null>(null)
   const { toast } = useToast()
+  
+  // Add debounce effect for search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setPage(1) // Reset to first page when search changes
+    }, 300)
+    
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
-  const [newCourse, setNewCourse] = useState({
-    code: '',
-    name: '',
-    department: '',
-    programmes: [] as string[],
-    lecturers: [] as string[],
-    status: 'active' as 'active' | 'inactive' | 'archived'
+  // Use API hooks with proper typing
+  const { 
+    useFetchData, 
+    useUpdateItem: useUpdateCourseSettings 
+  } = useApi<CourseEnrollment, CourseEnrollment>(
+    ApiService.LECTURER_COURSES_URL,
+    pageSize
+  )
+  
+  // Fetch with pagination, search and filters
+  const { 
+    data: enrollmentsData, 
+    isLoading, 
+    error,
+    refetch: refetchEnrollments
+  } = useFetchData(page, {
+    search: debouncedSearch,
+    role: 'lecturer',
+    is_active: selectedStatus === 'active' ? true : 
+               selectedStatus === 'inactive' ? false : '',
+    department: selectedDepartment || '',
+    page_size: pageSize
   })
+  
+  const { mutate: updateCourseSettings } = useUpdateCourseSettings
+
+  // Initialize settings when a course is selected
+  useEffect(() => {
+    if (currentCourse) {
+      setAutoEndSession(currentCourse.settings?.auto_end_session ?? true)
+      setAllowLateSubmissions(currentCourse.settings?.allow_late_submissions ?? false)
+    }
+  }, [currentCourse])
+
+  // Handle saving course settings
+  const handleSaveSettings = async () => {
+    if (!currentCourse) return
+    
+    setIsProcessing(true)
+    updateCourseSettings(
+      { 
+        id: currentCourse.id, 
+        item: {
+          ...currentCourse,
+          settings: {
+            auto_end_session: autoEndSession,
+            allow_late_submissions: allowLateSubmissions
+          }
+        } 
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Settings Saved",
+            description: "Course attendance settings have been updated successfully.",
+          })
+          refetchEnrollments()
+          setShowEditDialog(false)
+        },
+        onError: (error: any) => {
+          console.error("Failed to save settings:", error)
+          toast({
+            title: "Error",
+            description: error.message || "Failed to save settings. Please try again.",
+            variant: "destructive",
+          })
+        },
+        onSettled: () => {
+          setIsProcessing(false)
+        }
+      }
+    )
+  }
+
+  // Handle API errors
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error Loading Courses",
+        description: error.message || "Failed to load course data. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }, [error, toast])
+
+  // Export course data
+  const handleExportCourses = async () => {
+    try {
+      setIsProcessing(true)
+      
+      // Prepare export data
+      const exportData = filteredEnrollments.map(enrollment => ({
+        Code: enrollment.course?.code || 'N/A',
+        Name: enrollment.course?.name || 'N/A',
+        Department: enrollment.course?.department || 'N/A',
+        Programme: enrollment.class_group?.programme || 'N/A',
+        Students: enrollment.class_group?.students_count || 0,
+        Status: enrollment.course?.status || 'N/A',
+        Lecturer: enrollment.lecturer?.full_name || 'N/A'
+      }))
+      
+      // Generate CSV string
+      const headers = Object.keys(exportData[0]).join(',')
+      const rows = exportData.map(row => Object.values(row).join(','))
+      const csv = [headers, ...rows].join('\n')
+      
+      // Create download link
+      const blob = new Blob([csv], { type: 'text/csv' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `courses-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      toast({
+        title: "Export Complete",
+        description: "Course data has been exported successfully.",
+      })
+    } catch (error) {
+      console.error("Export error:", error)
+      toast({
+        title: "Export Failed",
+        description: "Failed to export course data. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsProcessing(false)
+    }
+  }
 
   // Extract unique departments from enrollments data with null handling
   const departments = useMemo(() => {
@@ -253,8 +395,8 @@ export default function CourseManagementPage() {
           <p className="text-muted-foreground">Add, edit, and manage courses across departments</p>
         </div>
         <div className="flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
-          <Button variant="outline" onClick={() => {}}>
-            <Download className="mr-2 h-4 w-4" />
+          <Button variant="outline" onClick={handleExportCourses} disabled={isProcessing || isLoading || !filteredEnrollments.length}>
+            {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
             Export
           </Button>
         </div>
