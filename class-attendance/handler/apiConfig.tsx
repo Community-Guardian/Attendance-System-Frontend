@@ -1,123 +1,147 @@
-// Base URL Configuration
-// const BASE_URL = 'https://attendancetrackingsystem.pythonanywhere.com';
-const BASE_URL = 'http://127.0.0.1:8000';
+/**
+ * API Configuration
+ * 
+ * This file centralizes all API endpoints based on the Django backend structure.
+ * All endpoints are directly extracted from Django urls.py files and corresponding views.
+ */
+
+// Base URL Configuration - Change this based on your environment
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export { BASE_URL };
 
-// ==========================================
-// Authentication & User Management Endpoints
-// ==========================================
-export const REGISTER_URL = `${BASE_URL}/register/`;
-export const LOGIN_URL = `${BASE_URL}/login/`;
-export const LOGOUT_URL = `${BASE_URL}/logout/`;
-export const VERIFY_TOKEN_URL = `${BASE_URL}/token/verify/`;
-export const CHANGE_PASSWORD_URL = `${BASE_URL}/password/change/`;
-export const RESEND_EMAIL_URL = `${BASE_URL}/resend-email/`;
-export const RESET_PASSWORD_URL = `${BASE_URL}/password/reset/`;
-export const PASSWORD_RESET_CONFIRM_URL = `${BASE_URL}/reset/`;
+// ===================================================================
+// Authentication & User Management
+// ===================================================================
+// From attendance/urls.py - Django REST Auth endpoints
+export const LOGIN_URL = `${BASE_URL}/login/`;  // From dj_rest_auth.urls
+export const LOGOUT_URL = `${BASE_URL}/logout/`;  // From dj_rest_auth.urls
+export const PASSWORD_CHANGE_URL = `${BASE_URL}/password/change/`;  // From dj_rest_auth.urls
+export const PASSWORD_RESET_URL = `${BASE_URL}/password/reset/`;  // From dj_rest_auth.urls
+export const REGISTER_URL = `${BASE_URL}/register/`;  // From dj_rest_auth.registration.urls
+export const TOKEN_URL = `${BASE_URL}/token/`;  // TokenObtainPairView in attendance/urls.py
+export const TOKEN_REFRESH_URL = `${BASE_URL}/token/refresh/`;  // CustomTokenRefreshView in userManager/urls.py
+export const TOKEN_VERIFY_URL = `${BASE_URL}/token/verify/`;  // TokenVerifyView in userManager/urls.py
 
-// Token Management
-export const REFRESH_TOKEN_URL = `${BASE_URL}/token/refresh/`;
-export const TOKEN_REFRESH_URL = `${BASE_URL}/token/refresh/`; // Duplicate - consider removing
+// From userManager/urls.py - Custom auth endpoints
+export const EMAIL_CONFIRMATION_URL = `${BASE_URL}/register/account-confirm-email/`;  // confirm_email function
+export const RESEND_EMAIL_URL = `${BASE_URL}/resend-email/`;  // ResendEmailVerificationView
+export const PASSWORD_RESET_CONFIRM_URL = `${BASE_URL}/api/reset/`;  // PasswordResetConfirmView
 
+// ===================================================================
 // User Management
-export const USER_URL = `${BASE_URL}/api/users/`;
-export const CUSTOM_USER_URL = `${BASE_URL}/api/users/`; // Duplicate - consider removing
-export const MASS_REGISTER_URL = `${BASE_URL}/api/users/mass_register/`;
+// ===================================================================
+// From userManager/urls.py - UserViewSet endpoints
+export const USER_URL = `${BASE_URL}/api/users/`;  // UserViewSet - CRUD operations
+export const MASS_REGISTER_URL = `${BASE_URL}/api/users/mass_register//`;  // @action in UserViewSet
+// ===================================================================
+// Attendance Management
+// ===================================================================
+// From attendance_app/urls.py - AttendanceSessionViewSet endpoints
+export const ATTENDANCE_SESSION_URL = `${BASE_URL}/attendance/attendance_sessions/`;  // AttendanceSessionViewSet - CRUD
+export const CLOSE_SESSION_URL = `${BASE_URL}/attendance/attendance_sessions/{id}/close_session/`;  // @action to close session
+export const ATTENDANCE_STATS_URL = `${BASE_URL}/attendance/attendance_records/student_attendance_per_course/`;  // @action in AttendanceSessionViewSet
 
-// ==========================================
-// Attendance Management Endpoints
-// ==========================================
-// Session Management
-export const ATTENDANCE_SESSION_URL = `${BASE_URL}/attendance/attendance_sessions/`;
-export const ATTENDANCE_RECORD_URL = `${BASE_URL}/attendance/attendance_records/`;
+// From attendance_app/urls.py - AttendanceRecordViewSet endpoints
+export const ATTENDANCE_RECORD_URL = `${BASE_URL}/attendance/attendance_records/`;  // AttendanceRecordViewSet - CRUD
+export const GEOLOCATION_CHECK_URL = `${BASE_URL}/attendance/attendance_records/is_within_geofence/`;  // @action in AttendanceRecordViewSet
+export const SIGN_ATTENDANCE_URL = `${BASE_URL}/attendance/attendance_records/sign_attendance/`;  // @action in AttendanceRecordViewSet
 
-// Borrowed Attendance
-export const BORROW_ACCOUNT_URL = `${BASE_URL}/borrow/borrow-accounts/`;
-export const FACIAL_RECOGNITION_DATA_URL = `${BASE_URL}/borrow/facial-recognition/`;
-export const BORROWED_ATTENDANCE_RECORD_URL = `${BASE_URL}/borrow/borrowed-attendance/`;
+// ===================================================================
+// Course Management
+// ===================================================================
+// From courses/urls.py - CourseViewSet endpoints
+export const COURSE_URL = `${BASE_URL}/courses/courses/`;  // CourseViewSet - CRUD operations
+export const COURSES_BY_DEPARTMENT_URL = `${BASE_URL}/courses/courses/by_department/`;  // @action in CourseViewSet
+export const COURSES_BY_PROGRAMME_URL = `${BASE_URL}/courses/courses/by_programme/`;  // @action in CourseViewSet
+export const COURSE_STATS_URL = `${BASE_URL}/courses/courses/{id}/stats/`;  // @action in CourseViewSet - course statistics
+export const LECTURER_COURSES_URL = `${BASE_URL}/courses/courses/lecturer_courses/`;  // @action in CourseViewSet - get logged-in lecturer's courses
+export const ASSIGN_PROGRAMMES_URL = `${BASE_URL}/courses/courses/{id}/assign_programmes/`;  // @action in CourseViewSet - assign programmes to course
 
-// ==========================================
-// Course Management Endpoints
-// ==========================================
-export const COURSE_URL = `${BASE_URL}/courses/courses/`;
-export const COURSE_ENROLLMENTS = `${BASE_URL}/courses/enrollments/`;
-export const COURSE_ATTENDANCE_SETTINGS = `${BASE_URL}/courses/enrollments/settings/`;
-export const COURSE_STUDENTS = `${BASE_URL}/courses/enrollments/students/`;
+// From courses/urls.py - EnrollmentViewSet endpoints
+export const ENROLLMENT_URL = `${BASE_URL}/courses/enrollments/`;  // EnrollmentViewSet - CRUD operations
+export const ACTIVE_ENROLLMENTS_URL = `${BASE_URL}/courses/enrollments/active_courses/`;  // @action in EnrollmentViewSet
+export const ENROLLMENT_BY_CURRENT_SEMESTER_URL = `${BASE_URL}/courses/enrollments/current_semester/`;  // @action in EnrollmentViewSet
+export const ENROLLMENT_ATTENDANCE_SUMMARY_URL = `${BASE_URL}/courses/enrollments/{id}/attendance_summary/`;  // @action in EnrollmentViewSet
+export const COURSE_ENROLLMENTS = `${BASE_URL}/courses/enrollments/`;  // EnrollmentViewSet with filter by course_id
+// ===================================================================
 
-// ==========================================
-// School Management Endpoints
-// ==========================================
-// Institution Structure
-export const SCHOOL_URL = `${BASE_URL}/school/schools/`;
-export const DEPARTMENT_URL = `${BASE_URL}/school/departments/`;
-export const PROGRAM_URL = `${BASE_URL}/school/programs/`;
-export const CLASS_GROUPS_URL = `${BASE_URL}/school/class-groups/`;
+// ===================================================================
+// Timetable Management
+// ===================================================================
+// From timetables/views.py - TimetableViewSet endpoints
+export const TIMETABLE_URL = `${BASE_URL}/timetable/timetables/`;  // TimetableViewSet - CRUD operations
+export const GENERATE_TIMETABLE_URL = `${BASE_URL}/timetable/timetables/generate/`;  // TimetableViewSet.generate - POST method
+export const TIMETABLES_BY_SEMESTER = `${BASE_URL}/timetable/timetables/by_semester/`;  // TimetableViewSet.by_semester - GET ?semester=uuid
+export const TIMETABLE_SLOTS_URL = `${BASE_URL}/timetable/slots/`;  // TimetableSlotsViewSet - CRUD operations
+export const TIMETABLE_CONFLICTS_URL = `${BASE_URL}/timetable/timetables/check_conflicts/`;  // @action check_conflicts in TimetableViewSet
 
-// Academic Calendar
-export const SEMESTER_URL = `${BASE_URL}/school/semesters/`;
-export const ACADEMIC_YEAR_URL = `${BASE_URL}/school/academic-years/`;
+// From timetables/views.py - ExaminationTimetableViewSet endpoints
+export const EXAM_TIMETABLE_URL = `${BASE_URL}/timetable/exams/`;  // ExaminationTimetableViewSet - CRUD operations
+export const GENERATE_EXAM_TIMETABLE_URL = `${BASE_URL}/timetable/exams/generate/`;  // ExaminationTimetableViewSet.generate - POST method
+export const UPCOMING_EXAMS_URL = `${BASE_URL}/timetable/exams/upcoming_exams/`;  // ExaminationTimetableViewSet.upcoming_exams - GET
+export const EXAM_IN_RANGE = `${BASE_URL}/timetable/exams/exams_in_range/`;  // ExaminationTimetableViewSet.exams_in_range - GET ?start_date&end_date
 
-// ==========================================
-// Timetable Management Endpoints
-// ==========================================
-export const TIMETABLE_URL = `${BASE_URL}/timetable/timetables/`;
-export const EXAM_TIMETABLE_URL = `${BASE_URL}/timetable/exams/`;
-export const TIMETABLE_SLOTS_URL = `${BASE_URL}/timetable/slots/`;
-export const TIMETABLE_CONFLICTS_URL = `${BASE_URL}/timetable/conflicts/`;
-export const GENERATE_TIMETABLE_URL = `${BASE_URL}/timetable/timetables/generate/`;
-
-// ==========================================
-// Configuration & Settings Endpoints
-// ==========================================
-// System Settings
-export const SYSTEM_SETTINGS_URL = `${BASE_URL}/config/system-settings/`;
-export const CAT_ATTENDANCE_WEEK_URL = `${BASE_URL}/config/cat-weeks/`;
-export const TIMETABLE_RULE_URL = `${BASE_URL}/config/timetable-rules/`;
-export const AUDIT_LOG_URL = `${BASE_URL}/config/audit-logs/`;
-
+// ===================================================================
 // Geolocation
-export const GEOLOCATION_ZONE_URL = `${BASE_URL}/geolocation/geolocation_zones/`;
-export const GEOLOCATION_LOGS_URL = `${BASE_URL}/geolocation/logs/`;
-export const GEOLOCATION_SETTINGS_URL = `${BASE_URL}/geolocation/settings/`;
+// ===================================================================
+// From geolocation/urls.py
+export const GEOLOCATION_ZONE_URL = `${BASE_URL}/geolocation/geolocation_zones/`;  // GeolocationZoneViewSet - CRUD operations
+export const ACTIVE_ZONES_URL = `${BASE_URL}/geolocation/geolocation_zones/active_zones/`;  // @action in GeolocationZoneViewSet
+// ===================================================================
+// School Structure
+// ===================================================================
+// From school/urls.py - defined in router, but specific file not provided
+export const SCHOOL_URL = `${BASE_URL}/school/schools/`;  // SchoolViewSet endpoints (reference in attendance/urls.py)
+export const SCHOOL_STATS = `${BASE_URL}/school/schools/{id}/statistics/`;  // SchoolViewSet - get school statistics
+export const DEPARTMENT_URL = `${BASE_URL}/school/departments/`;  // DepartmentViewSet endpoints (reference in attendance/urls.py)
+export const DEPARTMENT_STATS = `${BASE_URL}/school/departments/{id}/statistics/`;  // DepartmentViewSet - get department statistics
+export const PROGRAM_URL = `${BASE_URL}/school/programs/`;  // ProgrammeViewSet endpoints (reference in attendance/urls.py)
+export const CLASS_GROUPS_URL = `${BASE_URL}/school/class-groups/`;  // ClassGroupViewSet endpoints (reference in attendance/urls.py)
+export const SEMESTER_URL = `${BASE_URL}/school/semesters/`;  // SemesterViewSet endpoints (reference in attendance/urls.py)
+export const CURRENT_SEMESTER_URL = `${BASE_URL}/school/semesters/current/`;  // SemesterViewSet - get current semester only
+export const ACADEMIC_YEAR_URL = `${BASE_URL}/school/academic-years/`;  // AcademicYearViewSet endpoints (reference in attendance/urls.py)
 
-// ==========================================
-// Reporting Endpoints
-// ==========================================
-// Attendance Reports
-export const ATTENDANCE_REPORT_URL = `${BASE_URL}/reports/attendance-reports/`;
-export const STUDENT_ATTENDANCE_HISTORY_URL = `${BASE_URL}/reports/student-history/`;
-export const TIMETABLE_ADHERENCE_URL = `${BASE_URL}/reports/timetable-adherence/`;
+// ===================================================================
+// System Configuration
+// ===================================================================
+// From config/urls.py
+export const SYSTEM_SETTINGS_URL = `${BASE_URL}/config/system-settings/`;  // SystemSettingViewSet - CRUD operations
+export const CAT_WEEKS_URL = `${BASE_URL}/config/cat-weeks/`;  // CatAttendanceWeekViewSet - CRUD operations
+export const TIMETABLE_RULES_URL = `${BASE_URL}/config/timetable-rules/`;  // TimetableRuleViewSet - CRUD operations
+export const AUDIT_LOGS_URL = `${BASE_URL}/config/audit-logs/`;  // AuditLogViewSet - CRUD operations
 
-// Analytics
-export const ATTENDANCE_ANALYTICS_URL = `${BASE_URL}/reports/analytics/attendance/`;
-export const COURSE_ANALYTICS_URL = `${BASE_URL}/reports/analytics/courses/`;
-export const STUDENT_ANALYTICS_URL = `${BASE_URL}/reports/analytics/students/`;
+// ===================================================================
+// Reports
+// ===================================================================
+// From reports/urls.py - Specific API views
+export const ATTENDANCE_REPORTS_URL = `${BASE_URL}/reports/attendance-reports/`;  // AttendanceReportListView
+export const STUDENT_ATTENDANCE_HISTORY_URL = `${BASE_URL}/reports/student-history/`;  // StudentAttendanceHistoryView
+export const TIMETABLE_ADHERENCE_URL = `${BASE_URL}/reports/timetable-adherence/`;  // TimetableAdherenceView
 
-// Export Reports
-export const EXPORT_ATTENDANCE_REPORT_URL = `${BASE_URL}/reports/export/attendance/`;
-export const EXPORT_COURSE_REPORT_URL = `${BASE_URL}/reports/export/courses/`;
-export const EXPORT_STUDENT_REPORT_URL = `${BASE_URL}/reports/export/students/`;
+// ===================================================================
+// Helper function to generate URL with ID parameter
+// ===================================================================
+/**
+ * Replaces {id} placeholder in URL with actual ID
+ * @param url Base URL with {id} placeholder
+ * @param id ID to insert
+ * @returns URL with ID inserted
+ */
+export const withId = (url: string, id: string | number): string => {
+  return url.replace('{id}', id.toString());
+};
 
-// ==========================================
-// Dashboard Endpoints
-// ==========================================
-// Admin Dashboard
-export const ADMIN_DASHBOARD_STATS_URL = `${BASE_URL}/dashboard/admin/stats/`;
-export const ADMIN_DASHBOARD_ANALYTICS_URL = `${BASE_URL}/dashboard/admin/analytics/`;
-
-// Lecturer Dashboard
-export const LECTURER_DASHBOARD_STATS_URL = `${BASE_URL}/dashboard/lecturer/stats/`;
-export const LECTURER_COURSES_URL = `${BASE_URL}/dashboard/lecturer/courses/`;
-
-// Student Dashboard
-export const STUDENT_DASHBOARD_STATS_URL = `${BASE_URL}/dashboard/student/stats/`;
-export const STUDENT_COURSES_URL = `${BASE_URL}/dashboard/student/courses/`;
-
-// HOD Dashboard
-export const HOD_DASHBOARD_STATS_URL = `${BASE_URL}/dashboard/hod/stats/`;
-export const DEPARTMENT_ANALYTICS_URL = `${BASE_URL}/dashboard/hod/department/`;
-
-// Dean Dashboard
-export const DEAN_DASHBOARD_STATS_URL = `${BASE_URL}/dashboard/dean/stats/`;
-export const SCHOOL_ANALYTICS_URL = `${BASE_URL}/dashboard/dean/school/`;
+/**
+ * Standard API endpoint structure for ViewSets
+ * These follow the REST convention for Django REST Framework ViewSets
+ */
+export const API_ENDPOINTS = {
+  // For any ViewSet, these standard endpoints are available:
+  // LIST: GET /{base_url}/
+  // CREATE: POST /{base_url}/
+  // RETRIEVE: GET /{base_url}/{id}/
+  // UPDATE: PUT /{base_url}/{id}/
+  // PARTIAL_UPDATE: PATCH /{base_url}/{id}/
+  // DESTROY: DELETE /{base_url}/{id}/
+};
